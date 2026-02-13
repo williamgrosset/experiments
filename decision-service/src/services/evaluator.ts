@@ -1,6 +1,36 @@
 import type { TargetingRule, TargetingCondition } from "@experiments/shared";
 
 /**
+ * Resolve a dot-notation path against a nested object.
+ * Falls back gracefully to undefined for missing intermediate keys.
+ */
+function resolveValue(obj: Record<string, unknown>, path: string): unknown {
+  // Exact key match takes precedence (backward compatibility)
+  if (path in obj) {
+    return obj[path];
+  }
+
+  const segments = path.split(".");
+  let current: unknown = obj;
+
+  for (const segment of segments) {
+    if (
+      current === null ||
+      current === undefined ||
+      typeof current !== "object"
+    ) {
+      return undefined;
+    }
+    if (!Object.hasOwn(current as Record<string, unknown>, segment)) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+
+  return current;
+}
+
+/**
  * Evaluate targeting rules against user context.
  *
  * Rules use first-match semantics:
@@ -35,7 +65,7 @@ function evaluateCondition(
   condition: TargetingCondition,
   context: Record<string, unknown>
 ): boolean {
-  const value = context[condition.attribute];
+  const value = resolveValue(context, condition.attribute);
 
   switch (condition.operator) {
     case "eq":
