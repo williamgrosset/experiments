@@ -7,6 +7,7 @@ export interface CreateExperimentRequest {
   name: string;
   description?: string;
   environmentId: string;
+  targetingRules?: TargetingRule[];
 }
 
 export interface UpdateExperimentRequest {

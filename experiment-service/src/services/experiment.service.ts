@@ -14,9 +14,18 @@ export class ExperimentService {
     name: string;
     description?: string;
     environmentId: string;
+    targetingRules?: Prisma.InputJsonValue;
   }) {
     return prisma.experiment.create({
-      data,
+      data: {
+        key: data.key,
+        name: data.name,
+        description: data.description,
+        environmentId: data.environmentId,
+        ...(data.targetingRules !== undefined && {
+          targetingRules: data.targetingRules,
+        }),
+      },
       include: { variants: true, allocations: true, environment: true },
     });
   }

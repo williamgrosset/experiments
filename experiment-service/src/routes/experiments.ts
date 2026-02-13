@@ -12,7 +12,7 @@ export async function experimentRoutes(app: FastifyInstance) {
   app.post<{
     Body: CreateExperimentRequest;
   }>("/experiments", async (request, reply) => {
-    const { key, name, description, environmentId } = request.body;
+    const { key, name, description, environmentId, targetingRules } = request.body;
 
     if (!key || !name || !environmentId) {
       return reply
@@ -26,6 +26,7 @@ export async function experimentRoutes(app: FastifyInstance) {
         name,
         description,
         environmentId,
+        targetingRules: targetingRules as unknown as Prisma.InputJsonValue,
       });
       return reply.status(201).send(experiment);
     } catch (err: unknown) {
