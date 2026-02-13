@@ -1,0 +1,11 @@
+packages:
+  - api-gateway
+  - experiment-service
+  - decision-service
+  - packages/*
+
+ignoredBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - esbuild
+  - prisma

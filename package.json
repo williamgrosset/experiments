@@ -1,0 +1,26 @@
+{
+  "name": "@experiments/root",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r run build",
+    "dev": "concurrently -n gateway,experiment,decision -c blue,green,yellow \"pnpm dev:gateway\" \"pnpm dev:experiment\" \"pnpm dev:decision\"",
+    "dev:experiment": "pnpm --filter experiment-service run dev",
+    "dev:decision": "pnpm --filter decision-service run dev",
+    "dev:gateway": "pnpm --filter api-gateway run dev",
+    "lint": "pnpm -r run lint"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma"
+    ]
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

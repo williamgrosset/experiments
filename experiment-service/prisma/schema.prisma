@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Environment {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  experiments Experiment[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Experiment {
+  id             String           @id @default(uuid())
+  key            String
+  name           String
+  description    String?
+  salt           String           @default(uuid())
+  status         ExperimentStatus @default(DRAFT)
+  environmentId  String
+  environment    Environment      @relation(fields: [environmentId], references: [id])
+  variants       Variant[]
+  allocations    Allocation[]
+  targetingRules Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([key, environmentId])
+}
+
+enum ExperimentStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  ARCHIVED
+}
+
+model Variant {
+  id           String     @id @default(uuid())
+  key          String
+  name         String
+  payload      Json?
+  experimentId String
+  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+
+  @@unique([key, experimentId])
+}
+
+model Allocation {
+  id           String     @id @default(uuid())
+  variantId    String
+  rangeStart   Int
+  rangeEnd     Int
+  experimentId String
+  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+}
+
+model ConfigVersion {
+  id            String   @id @default(uuid())
+  environmentId String
+  version       Int
+  snapshot      Json
+  publishedAt   DateTime @default(now())
+
+  @@unique([environmentId, version])
+}
