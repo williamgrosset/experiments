@@ -1,0 +1,124 @@
+import type {
+  Environment,
+  Experiment,
+  ExperimentStatus,
+  Variant,
+  Allocation,
+  TargetingRule,
+} from "./types";
+
+const BASE = "/api";
+
+async function request<T>(
+  path: string,
+  options?: RequestInit,
+): Promise<T> {
+  const headers: HeadersInit = { ...options?.headers };
+  if (options?.body) {
+    (headers as Record<string, string>)["Content-Type"] = "application/json";
+  }
+  const res = await fetch(`${BASE}${path}`, {
+    headers,
+    ...options,
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`API error ${res.status}: ${body}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+// --- Environments ---
+
+export function fetchEnvironments(): Promise<Environment[]> {
+  return request<Environment[]>("/environments");
+}
+
+export function fetchEnvironment(id: string): Promise<Environment> {
+  return request<Environment>(`/environments/${id}`);
+}
+
+export function createEnvironment(name: string): Promise<Environment> {
+  return request<Environment>("/environments", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+
+// --- Experiments ---
+
+export function fetchExperiments(params?: {
+  environmentId?: string;
+  status?: ExperimentStatus;
+}): Promise<Experiment[]> {
+  const query = new URLSearchParams();
+  if (params?.environmentId) query.set("environmentId", params.environmentId);
+  if (params?.status) query.set("status", params.status);
+  const qs = query.toString();
+  return request<Experiment[]>(`/experiments${qs ? `?${qs}` : ""}`);
+}
+
+export function fetchExperiment(id: string): Promise<Experiment> {
+  return request<Experiment>(`/experiments/${id}`);
+}
+
+export function createExperiment(data: {
+  key: string;
+  name: string;
+  description?: string;
+  environmentId: string;
+  targetingRules?: TargetingRule[];
+}): Promise<Experiment> {
+  return request<Experiment>("/experiments", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateExperiment(
+  id: string,
+  data: { name?: string; description?: string; targetingRules?: TargetingRule[] },
+): Promise<Experiment> {
+  return request<Experiment>(`/experiments/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateExperimentStatus(
+  id: string,
+  status: ExperimentStatus,
+): Promise<Experiment> {
+  return request<Experiment>(`/experiments/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function publishExperiment(id: string): Promise<unknown> {
+  return request(`/experiments/${id}/publish`, { method: "POST" });
+}
+
+// --- Variants ---
+
+export function createVariant(
+  experimentId: string,
+  data: { key: string; name: string; payload?: Record<string, unknown> },
+): Promise<Variant> {
+  return request<Variant>(`/experiments/${experimentId}/variants`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// --- Allocations ---
+
+export function setAllocations(
+  experimentId: string,
+  allocations: Array<{ variantId: string; rangeStart: number; rangeEnd: number }>,
+): Promise<Allocation[]> {
+  return request<Allocation[]>(`/experiments/${experimentId}/allocations`, {
+    method: "PUT",
+    body: JSON.stringify({ allocations }),
+  });
+}
