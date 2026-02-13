@@ -1,0 +1,87 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: experiments
+          POSTGRES_USER: experiments
+          POSTGRES_PASSWORD: experiments
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U experiments"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://experiments:experiments@localhost:5432/experiments
+      REDIS_URL: redis://localhost:6379
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @experiments/shared run build
+
+      - name: Generate Prisma client
+        run: pnpm --filter experiment-service run db:generate
+
+      - name: Push database schema
+        run: pnpm --filter experiment-service run db:push
+
+      - name: Start experiment-service
+        run: pnpm --filter experiment-service run dev &
+
+      - name: Start decision-service
+        run: pnpm --filter decision-service run dev &
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for experiment-service..."
+          timeout 30 bash -c 'until curl -sf http://localhost:3001/health; do sleep 1; done'
+          echo ""
+          echo "Waiting for decision-service..."
+          timeout 30 bash -c 'until curl -sf http://localhost:3002/health; do sleep 1; done'
+          echo ""
+          echo "Both services are healthy."
+
+      - name: Run integration tests
+        run: pnpm test:integration
