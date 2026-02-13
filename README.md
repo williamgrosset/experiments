@@ -234,6 +234,7 @@ curl -s "http://localhost:3000/api/decide?user_key=user-123&env=prod&context=%7B
 ```
 experiments/
 ├── packages/shared/          # Shared types and hashing utility
+|—— dashboard                 # Dashboard for experiment CRUD
 ├── experiment-service/       # Control plane (Prisma + Postgres + Redis)
 ├── decision-service/         # Decision plane (in-memory config + Redis Pub/Sub)
 ├── api-gateway/              # Reverse proxy
