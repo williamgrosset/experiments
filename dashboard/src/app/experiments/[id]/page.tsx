@@ -49,6 +49,8 @@ export default function ExperimentDetailPage() {
   const [showVariantForm, setShowVariantForm] = useState(false);
   const [variantKey, setVariantKey] = useState("");
   const [variantName, setVariantName] = useState("");
+  const [variantPayload, setVariantPayload] = useState("");
+  const [payloadError, setPayloadError] = useState("");
   const [addingVariant, setAddingVariant] = useState(false);
 
   // Allocation editing
@@ -123,15 +125,33 @@ export default function ExperimentDetailPage() {
   async function handleAddVariant(e: React.FormEvent) {
     e.preventDefault();
     if (!experiment) return;
+
+    let parsedPayload: Record<string, unknown> | undefined;
+    if (variantPayload.trim()) {
+      try {
+        parsedPayload = JSON.parse(variantPayload.trim());
+        if (typeof parsedPayload !== "object" || Array.isArray(parsedPayload) || parsedPayload === null) {
+          setPayloadError("Payload must be a JSON object");
+          return;
+        }
+      } catch {
+        setPayloadError("Invalid JSON");
+        return;
+      }
+    }
+
     setAddingVariant(true);
     setError("");
     try {
       await createVariant(experiment.id, {
         key: variantKey.trim(),
         name: variantName.trim(),
+        ...(parsedPayload !== undefined && { payload: parsedPayload }),
       });
       setVariantKey("");
       setVariantName("");
+      setVariantPayload("");
+      setPayloadError("");
       setShowVariantForm(false);
       load();
     } catch (err) {
@@ -350,41 +370,63 @@ export default function ExperimentDetailPage() {
         {showVariantForm && (
           <form
             onSubmit={handleAddVariant}
-            className="mb-4 flex items-end gap-3 rounded-lg border border-zinc-200 bg-zinc-50/50 p-4"
+            className="mb-4 space-y-3 rounded-lg border border-zinc-200 bg-zinc-50/50 p-4"
           >
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-zinc-600">
-                Key
-              </label>
-              <input
-                type="text"
-                value={variantKey}
-                onChange={(e) => setVariantKey(e.target.value)}
-                placeholder="e.g. control"
-                className="mt-1 w-full rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm outline-none focus:border-zinc-500"
-                required
-              />
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-zinc-600">
+                  Key
+                </label>
+                <input
+                  type="text"
+                  value={variantKey}
+                  onChange={(e) => setVariantKey(e.target.value)}
+                  placeholder="e.g. control"
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm outline-none focus:border-zinc-500"
+                  required
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-zinc-600">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={variantName}
+                  onChange={(e) => setVariantName(e.target.value)}
+                  placeholder="e.g. Control"
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm outline-none focus:border-zinc-500"
+                  required
+                />
+              </div>
             </div>
-            <div className="flex-1">
+            <div>
               <label className="block text-xs font-medium text-zinc-600">
-                Name
+                Payload <span className="font-normal text-zinc-400">(optional JSON)</span>
               </label>
-              <input
-                type="text"
-                value={variantName}
-                onChange={(e) => setVariantName(e.target.value)}
-                placeholder="e.g. Control"
-                className="mt-1 w-full rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm outline-none focus:border-zinc-500"
-                required
+              <textarea
+                value={variantPayload}
+                onChange={(e) => {
+                  setVariantPayload(e.target.value);
+                  setPayloadError("");
+                }}
+                placeholder='{"color": "blue", "buttonText": "Sign up now"}'
+                rows={3}
+                className={`mt-1 w-full rounded-md border px-2.5 py-1.5 font-mono text-sm outline-none focus:border-zinc-500 ${payloadError ? "border-red-300 bg-red-50/50" : "border-zinc-300"}`}
               />
+              {payloadError && (
+                <p className="mt-1 text-xs text-red-600">{payloadError}</p>
+              )}
             </div>
-            <button
-              type="submit"
-              disabled={addingVariant}
-              className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-            >
-              {addingVariant ? "Adding..." : "Add"}
-            </button>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={addingVariant}
+                className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+              >
+                {addingVariant ? "Adding..." : "Add"}
+              </button>
+            </div>
           </form>
         )}
 
@@ -397,6 +439,9 @@ export default function ExperimentDetailPage() {
                 </th>
                 <th className="px-4 py-2.5 text-xs font-medium text-zinc-500">
                   Key
+                </th>
+                <th className="px-4 py-2.5 text-xs font-medium text-zinc-500">
+                  Payload
                 </th>
                 <th className="px-4 py-2.5 text-xs font-medium text-zinc-500">
                   Allocation
@@ -416,6 +461,15 @@ export default function ExperimentDetailPage() {
                     <td className="px-4 py-3 font-mono text-xs text-zinc-500">
                       {v.key}
                     </td>
+                    <td className="px-4 py-3">
+                      {v.payload ? (
+                        <code className="inline-block max-w-xs truncate rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-xs text-zinc-600">
+                          {JSON.stringify(v.payload)}
+                        </code>
+                      ) : (
+                        <span className="text-zinc-400">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-zinc-500">
                       {alloc
                         ? allocationPercent(alloc.rangeStart, alloc.rangeEnd)
@@ -427,7 +481,7 @@ export default function ExperimentDetailPage() {
               {experiment.variants.length === 0 && (
                 <tr>
                   <td
-                    colSpan={3}
+                    colSpan={4}
                     className="px-4 py-6 text-center text-sm text-zinc-400"
                   >
                     No variants yet. Add at least two to run this experiment.
