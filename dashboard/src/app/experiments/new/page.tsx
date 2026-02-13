@@ -9,6 +9,11 @@ import type {
   TargetingCondition,
   RuleOperator,
 } from "@/lib/types";
+import { Spinner } from "@/components/spinner";
+import { Button } from "@/components/button";
+import { Input, Textarea, Select, FormField } from "@/components/form";
+import { PageContainer, PageHeader } from "@/components/page-layout";
+import { ErrorAlert } from "@/components/error-alert";
 
 const OPERATORS: { value: RuleOperator; label: string }[] = [
   { value: "eq", label: "equals" },
@@ -193,91 +198,65 @@ export default function NewExperimentPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-800" />
-      </div>
-    );
+    return <Spinner />;
   }
 
   return (
-    <div className="mx-auto max-w-xl px-8 py-10">
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold tracking-tight">
-          Create experiment
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Set up a new experiment. You can add variants and allocations after
-          creation.
-        </p>
-      </div>
+    <PageContainer maxWidth="xl">
+      <PageHeader
+        title="Create experiment"
+        subtitle="Set up a new experiment. You can add variants and allocations after creation."
+      />
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-zinc-700">
-            Name
-          </label>
-          <input
+        <FormField label="Name">
+          <Input
             type="text"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             placeholder="e.g. Homepage hero test"
-            className="mt-1.5 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition-colors focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
             required
             autoFocus
           />
-        </div>
+        </FormField>
 
-        <div>
-          <label className="block text-sm font-medium text-zinc-700">
-            Key
-          </label>
-          <input
+        <FormField
+          label="Key"
+          hint="Used as the experiment identifier in code. Must be unique per environment."
+        >
+          <Input
             type="text"
             value={key}
             onChange={(e) => setKey(e.target.value)}
             placeholder="e.g. homepage-hero-test"
-            className="mt-1.5 w-full rounded-lg border border-zinc-300 px-3 py-2 font-mono text-sm outline-none transition-colors focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
+            mono
             required
           />
-          <p className="mt-1 text-xs text-zinc-400">
-            Used as the experiment identifier in code. Must be unique per
-            environment.
-          </p>
-        </div>
+        </FormField>
 
-        <div>
-          <label className="block text-sm font-medium text-zinc-700">
-            Description
-            <span className="ml-1 font-normal text-zinc-400">(optional)</span>
-          </label>
-          <textarea
+        <FormField label="Description" optional>
+          <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
             placeholder="Briefly describe what this experiment tests..."
-            className="mt-1.5 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition-colors focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
           />
-        </div>
+        </FormField>
 
-        <div>
-          <label className="block text-sm font-medium text-zinc-700">
-            Environment
-          </label>
+        <FormField label="Environment">
           {environments.length > 0 ? (
-            <select
+            <Select
               value={environmentId}
               onChange={(e) => setEnvironmentId(e.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
             >
               {environments.map((env) => (
                 <option key={env.id} value={env.id}>
                   {env.name}
                 </option>
               ))}
-            </select>
+            </Select>
           ) : (
-            <p className="mt-1.5 text-sm text-zinc-500">
+            <p className="text-sm text-zinc-500">
               No environments found.{" "}
               <a href="/environments" className="underline">
                 Create one first
@@ -285,7 +264,7 @@ export default function NewExperimentPage() {
               .
             </p>
           )}
-        </div>
+        </FormField>
 
         {/* --- Targeting rules --- */}
         <div>
@@ -294,13 +273,15 @@ export default function NewExperimentPage() {
               Targeting rules
               <span className="ml-1 font-normal text-zinc-400">(optional)</span>
             </label>
-            <button
+            <Button
+              variant="ghost"
+              size="xs"
               type="button"
               onClick={addRule}
-              className="text-xs font-medium text-zinc-600 transition-colors hover:text-zinc-900"
+              className="text-zinc-600"
             >
               + Add rule
-            </button>
+            </Button>
           </div>
 
           {targetingRules.length === 0 ? (
@@ -323,13 +304,15 @@ export default function NewExperimentPage() {
                         </span>
                       )}
                     </span>
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="xs"
                       type="button"
                       onClick={() => removeRule(ruleIndex)}
-                      className="text-xs text-zinc-400 transition-colors hover:text-red-600"
+                      className="text-zinc-400 hover:text-red-600"
                     >
                       Remove
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="space-y-2">
@@ -345,7 +328,7 @@ export default function NewExperimentPage() {
                           </div>
                         )}
                         <div className="flex items-start gap-2">
-                          <input
+                          <Input
                             type="text"
                             placeholder="attribute"
                             value={condition.attribute}
@@ -357,9 +340,11 @@ export default function NewExperimentPage() {
                                 e.target.value,
                               )
                             }
-                            className="w-1/3 rounded-md border border-zinc-300 px-2.5 py-1.5 font-mono text-sm outline-none transition-colors focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
+                            size="sm"
+                            mono
+                            className="w-1/3"
                           />
-                          <select
+                          <Select
                             value={condition.operator}
                             onChange={(e) =>
                               updateCondition(
@@ -369,15 +354,16 @@ export default function NewExperimentPage() {
                                 e.target.value,
                               )
                             }
-                            className="w-1/4 rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
+                            size="sm"
+                            className="w-1/4"
                           >
                             {OPERATORS.map((op) => (
                               <option key={op.value} value={op.value}>
                                 {op.label}
                               </option>
                             ))}
-                          </select>
-                          <input
+                          </Select>
+                          <Input
                             type="text"
                             placeholder={
                               condition.operator === "in" ||
@@ -394,15 +380,18 @@ export default function NewExperimentPage() {
                                 e.target.value,
                               )
                             }
-                            className="flex-1 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
+                            size="sm"
+                            className="w-1/2"
                           />
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="xs"
                             type="button"
                             onClick={() =>
                               removeCondition(ruleIndex, condIndex)
                             }
                             disabled={rule.conditions.length === 1}
-                            className="rounded-md px-1.5 py-1.5 text-zinc-400 transition-colors hover:text-red-600 disabled:opacity-30 disabled:hover:text-zinc-400"
+                            className="rounded-md px-1.5 py-1.5 text-zinc-400 hover:text-red-600 disabled:hover:text-zinc-400"
                             title="Remove condition"
                           >
                             <svg
@@ -418,19 +407,21 @@ export default function NewExperimentPage() {
                                 d="M6 18L18 6M6 6l12 12"
                               />
                             </svg>
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="xs"
                     type="button"
                     onClick={() => addCondition(ruleIndex)}
-                    className="mt-2.5 text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-700"
+                    className="mt-2.5 hover:text-zinc-700"
                   >
                     + Add condition
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -445,29 +436,26 @@ export default function NewExperimentPage() {
           )}
         </div>
 
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        <ErrorAlert message={error} />
 
         <div className="flex items-center gap-3 pt-2">
-          <button
+          <Button
             type="submit"
-            disabled={submitting || !environmentId}
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            disabled={!environmentId}
+            loading={submitting}
+            loadingText="Creating..."
           >
-            {submitting ? "Creating..." : "Create experiment"}
-          </button>
-          <button
+            Create experiment
+          </Button>
+          <Button
+            variant="secondary"
             type="button"
             onClick={() => router.back()}
-            className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
-    </div>
+    </PageContainer>
   );
 }

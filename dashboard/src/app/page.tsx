@@ -3,8 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchExperiments, fetchEnvironments } from "@/lib/api";
-import { statusColor, statusDot, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import type { Experiment, Environment, ExperimentStatus } from "@/lib/types";
+import { Spinner } from "@/components/spinner";
+import { StatusBadge } from "@/components/status-badge";
+import { DataTable, type Column } from "@/components/data-table";
+import { PageContainer, PageHeader } from "@/components/page-layout";
+import { StatCard } from "@/components/stat-card";
 
 export default function OverviewPage() {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
@@ -36,35 +41,59 @@ export default function OverviewPage() {
     { label: "Environments", value: environments.length },
   ];
 
+  const columns: Column<Experiment>[] = [
+    {
+      key: "name",
+      header: "Name",
+      render: (exp) => (
+        <Link
+          href={`/experiments/${exp.id}`}
+          className="font-medium text-zinc-900 hover:underline"
+        >
+          {exp.name}
+        </Link>
+      ),
+    },
+    {
+      key: "key",
+      header: "Key",
+      className: "px-4 py-3 font-mono text-xs text-zinc-500",
+      render: (exp) => exp.key,
+    },
+    {
+      key: "environment",
+      header: "Environment",
+      className: "px-4 py-3 text-zinc-600",
+      render: (exp) => exp.environment?.name ?? "\u2014",
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (exp) => <StatusBadge status={exp.status} />,
+    },
+    {
+      key: "created",
+      header: "Created",
+      className: "px-4 py-3 text-zinc-500",
+      render: (exp) => formatDate(exp.createdAt),
+    },
+  ];
+
   if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-800" />
-      </div>
-    );
+    return <Spinner />;
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-8 py-10">
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold tracking-tight">Overview</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          A summary of your experimentation platform.
-        </p>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Overview"
+        subtitle="A summary of your experimentation platform."
+      />
 
       {/* Stats grid */}
       <div className="mb-10 grid grid-cols-4 gap-4">
         {stats.map((s) => (
-          <div
-            key={s.label}
-            className="rounded-lg border border-zinc-200 bg-white px-5 py-4"
-          >
-            <p className="text-xs font-medium text-zinc-500">{s.label}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight">
-              {s.value}
-            </p>
-          </div>
+          <StatCard key={s.label} label={s.label} value={s.value} />
         ))}
       </div>
 
@@ -80,78 +109,19 @@ export default function OverviewPage() {
           View all &rarr;
         </Link>
       </div>
-      <div className="overflow-hidden rounded-lg border border-zinc-200">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-zinc-200 bg-zinc-50/60">
-              <th className="px-4 py-2.5 text-xs font-medium text-zinc-500">
-                Name
-              </th>
-              <th className="px-4 py-2.5 text-xs font-medium text-zinc-500">
-                Key
-              </th>
-              <th className="px-4 py-2.5 text-xs font-medium text-zinc-500">
-                Environment
-              </th>
-              <th className="px-4 py-2.5 text-xs font-medium text-zinc-500">
-                Status
-              </th>
-              <th className="px-4 py-2.5 text-xs font-medium text-zinc-500">
-                Created
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {experiments.slice(0, 5).map((exp) => (
-              <tr key={exp.id} className="transition-colors hover:bg-zinc-50/50">
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/experiments/${exp.id}`}
-                    className="font-medium text-zinc-900 hover:underline"
-                  >
-                    {exp.name}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 font-mono text-xs text-zinc-500">
-                  {exp.key}
-                </td>
-                <td className="px-4 py-3 text-zinc-600">
-                  {exp.environment?.name ?? "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor(exp.status)}`}
-                  >
-                    <span
-                      className={`inline-block h-1.5 w-1.5 rounded-full ${statusDot(exp.status)}`}
-                    />
-                    {exp.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-zinc-500">
-                  {formatDate(exp.createdAt)}
-                </td>
-              </tr>
-            ))}
-            {experiments.length === 0 && (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="px-4 py-8 text-center text-sm text-zinc-400"
-                >
-                  No experiments yet.{" "}
-                  <Link
-                    href="/experiments/new"
-                    className="text-zinc-900 underline"
-                  >
-                    Create one
-                  </Link>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <DataTable
+        columns={columns}
+        data={experiments.slice(0, 5)}
+        rowKey={(exp) => exp.id}
+        emptyMessage={
+          <>
+            No experiments yet.{" "}
+            <Link href="/experiments/new" className="text-zinc-900 underline">
+              Create one
+            </Link>
+          </>
+        }
+      />
+    </PageContainer>
   );
 }

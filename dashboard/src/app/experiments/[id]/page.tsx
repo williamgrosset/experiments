@@ -12,13 +12,17 @@ import {
   createVariant,
   setAllocations,
 } from "@/lib/api";
-import {
-  statusColor,
-  statusDot,
-  formatDateTime,
-  allocationPercent,
-} from "@/lib/utils";
+import { formatDateTime, allocationPercent } from "@/lib/utils";
 import type { Experiment, ExperimentStatus } from "@/lib/types";
+import { Spinner } from "@/components/spinner";
+import { Button } from "@/components/button";
+import { StatusBadge } from "@/components/status-badge";
+import { Modal } from "@/components/modal";
+import { DataTable, type Column } from "@/components/data-table";
+import { PageContainer } from "@/components/page-layout";
+import { Input, Textarea, FormField } from "@/components/form";
+import { ErrorAlert } from "@/components/error-alert";
+import { StatCard } from "@/components/stat-card";
 
 const STATUS_TRANSITIONS: Record<ExperimentStatus, ExperimentStatus[]> = {
   DRAFT: ["RUNNING", "ARCHIVED"],
@@ -227,11 +231,7 @@ export default function ExperimentDetailPage() {
   const totalAllocPct = allocDraft.reduce((sum, a) => sum + a.percentage, 0);
 
   if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-800" />
-      </div>
-    );
+    return <Spinner />;
   }
 
   if (!experiment) {
@@ -247,8 +247,46 @@ export default function ExperimentDetailPage() {
 
   const transitions = STATUS_TRANSITIONS[experiment.status];
 
+  const variantColumns: Column<(typeof experiment.variants)[number]>[] = [
+    {
+      key: "name",
+      header: "Name",
+      className: "px-4 py-3 font-medium text-zinc-900",
+      render: (v) => v.name,
+    },
+    {
+      key: "key",
+      header: "Key",
+      className: "px-4 py-3 font-mono text-xs text-zinc-500",
+      render: (v) => v.key,
+    },
+    {
+      key: "payload",
+      header: "Payload",
+      render: (v) =>
+        v.payload ? (
+          <code className="inline-block max-w-xs truncate rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-xs text-zinc-600">
+            {JSON.stringify(v.payload)}
+          </code>
+        ) : (
+          <span className="text-zinc-400">{"\u2014"}</span>
+        ),
+    },
+    {
+      key: "allocation",
+      header: "Allocation",
+      className: "px-4 py-3 text-zinc-500",
+      render: (v) => {
+        const alloc = experiment.allocations.find((a) => a.variantId === v.id);
+        return alloc
+          ? allocationPercent(alloc.rangeStart, alloc.rangeEnd)
+          : "\u2014";
+      },
+    },
+  ];
+
   return (
-    <div className="mx-auto max-w-4xl px-8 py-10">
+    <PageContainer maxWidth="4xl">
       {/* Breadcrumb */}
       <nav className="mb-6 flex items-center gap-1.5 text-sm text-zinc-400">
         <Link href="/experiments" className="hover:text-zinc-700">
@@ -263,33 +301,34 @@ export default function ExperimentDetailPage() {
         <div className="flex-1">
           {editing ? (
             <div className="space-y-3">
-              <input
+              <Input
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-lg font-semibold outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
+                className="text-lg font-semibold"
               />
-              <textarea
+              <Textarea
                 value={editDesc}
                 onChange={(e) => setEditDesc(e.target.value)}
                 rows={2}
                 placeholder="Description..."
-                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
               />
               <div className="flex gap-2">
-                <button
+                <Button
+                  size="sm"
                   onClick={handleSave}
-                  disabled={saving}
-                  className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                  loading={saving}
+                  loadingText="Saving..."
                 >
-                  {saving ? "Saving..." : "Save"}
-                </button>
-                <button
+                  Save
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setEditing(false)}
-                  className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
@@ -298,26 +337,21 @@ export default function ExperimentDetailPage() {
                 <h1 className="text-xl font-semibold tracking-tight">
                   {experiment.name}
                 </h1>
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor(experiment.status)}`}
-                >
-                  <span
-                    className={`inline-block h-1.5 w-1.5 rounded-full ${statusDot(experiment.status)}`}
-                  />
-                  {experiment.status}
-                </span>
+                <StatusBadge status={experiment.status} />
               </div>
               {experiment.description && (
                 <p className="mt-1 text-sm text-zinc-500">
                   {experiment.description}
                 </p>
               )}
-              <button
+              <Button
+                variant="ghost"
+                size="xs"
                 onClick={() => setEditing(true)}
-                className="mt-2 text-xs text-zinc-400 hover:text-zinc-700"
+                className="mt-2 text-zinc-400 hover:text-zinc-700"
               >
                 Edit details
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -325,93 +359,95 @@ export default function ExperimentDetailPage() {
         {/* Actions */}
         <div className="ml-6 flex items-center gap-2">
           {transitions.map((s) => (
-            <button
+            <Button
               key={s}
+              size="sm"
               onClick={() => handleStatusChange(s)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${STATUS_ACTION_STYLES[s] || "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}
+              className={`text-xs ${STATUS_ACTION_STYLES[s] || "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}
             >
               {s === "RUNNING" ? "Start" : s === "PAUSED" ? "Pause" : "Archive"}
-            </button>
+            </Button>
           ))}
           {(experiment.status === "RUNNING" || experiment.status === "PAUSED") && (
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={handlePublish}
-              disabled={publishing}
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50"
+              loading={publishing}
+              loadingText="Publishing..."
+              className="text-xs"
             >
-              {publishing ? "Publishing..." : "Publish config"}
-            </button>
+              Publish config
+            </Button>
           )}
-          <button
+          <Button
+            variant="danger-outline"
+            size="sm"
             onClick={() => setShowDeleteConfirm(true)}
-            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+            className="text-xs"
           >
             Delete
-          </button>
+          </Button>
         </div>
       </div>
 
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+      <ErrorAlert message={error} className="mb-6" />
 
       {/* Delete confirmation dialog */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-6 shadow-lg">
-            <h3 className="text-base font-semibold text-zinc-900">
-              Delete experiment
-            </h3>
-            <p className="mt-2 text-sm text-zinc-500">
-              Are you sure you want to delete{" "}
-              <span className="font-medium text-zinc-700">
-                {experiment.name}
-              </span>
-              ? This will permanently remove the experiment, its variants, and
-              allocations. The environment config will be re-published to
-              reflect this change.
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={deleting}
-                className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </button>
-            </div>
-          </div>
+      <Modal
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Delete experiment"
+        maxWidth="max-w-sm"
+      >
+        <p className="mt-2 text-sm text-zinc-500">
+          Are you sure you want to delete{" "}
+          <span className="font-medium text-zinc-700">
+            {experiment.name}
+          </span>
+          ? This will permanently remove the experiment, its variants, and
+          allocations. The environment config will be re-published to
+          reflect this change.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowDeleteConfirm(false)}
+            disabled={deleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={handleDelete}
+            loading={deleting}
+            loadingText="Deleting..."
+          >
+            Delete
+          </Button>
         </div>
-      )}
+      </Modal>
 
       {/* Metadata */}
       <div className="mb-8 grid grid-cols-3 gap-4">
-        {[
-          { label: "Key", value: experiment.key, mono: true },
-          { label: "Environment", value: experiment.environment?.name ?? experiment.environmentId },
-          { label: "Created", value: formatDateTime(experiment.createdAt) },
-        ].map((m) => (
-          <div
-            key={m.label}
-            className="rounded-lg border border-zinc-200 px-4 py-3"
-          >
-            <p className="text-xs font-medium text-zinc-500">{m.label}</p>
-            <p
-              className={`mt-0.5 text-sm ${m.mono ? "font-mono" : ""} text-zinc-900`}
-            >
-              {m.value}
-            </p>
-          </div>
-        ))}
+        <StatCard
+          label="Key"
+          value={experiment.key}
+          mono
+          size="sm"
+        />
+        <StatCard
+          label="Environment"
+          value={experiment.environment?.name ?? experiment.environmentId}
+          size="sm"
+        />
+        <StatCard
+          label="Created"
+          value={formatDateTime(experiment.createdAt)}
+          size="sm"
+        />
       </div>
 
       {/* Variants */}
@@ -419,12 +455,13 @@ export default function ExperimentDetailPage() {
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-medium text-zinc-900">Variants</h2>
           {experiment.status !== "ARCHIVED" && (
-            <button
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={() => setShowVariantForm(!showVariantForm)}
-              className="text-xs font-medium text-zinc-500 hover:text-zinc-900"
             >
               {showVariantForm ? "Cancel" : "+ Add variant"}
-            </button>
+            </Button>
           )}
         </div>
 
@@ -434,38 +471,34 @@ export default function ExperimentDetailPage() {
             className="mb-4 space-y-3 rounded-lg border border-zinc-200 bg-zinc-50/50 p-4"
           >
             <div className="flex items-end gap-3">
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-zinc-600">
-                  Key
-                </label>
-                <input
+              <FormField label="Key" labelSize="xs" className="flex-1">
+                <Input
                   type="text"
                   value={variantKey}
                   onChange={(e) => setVariantKey(e.target.value)}
                   placeholder="e.g. control"
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm outline-none focus:border-zinc-500"
+                  size="sm"
                   required
                 />
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-zinc-600">
-                  Name
-                </label>
-                <input
+              </FormField>
+              <FormField label="Name" labelSize="xs" className="flex-1">
+                <Input
                   type="text"
                   value={variantName}
                   onChange={(e) => setVariantName(e.target.value)}
                   placeholder="e.g. Control"
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm outline-none focus:border-zinc-500"
+                  size="sm"
                   required
                 />
-              </div>
+              </FormField>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-zinc-600">
-                Payload <span className="font-normal text-zinc-400">(optional JSON)</span>
-              </label>
-              <textarea
+            <FormField
+              label="Payload"
+              labelSize="xs"
+              error={payloadError}
+            >
+              <span className="font-normal text-xs text-zinc-400">(optional JSON)</span>
+              <Textarea
                 value={variantPayload}
                 onChange={(e) => {
                   setVariantPayload(e.target.value);
@@ -473,85 +506,31 @@ export default function ExperimentDetailPage() {
                 }}
                 placeholder='{"color": "blue", "buttonText": "Sign up now"}'
                 rows={3}
-                className={`mt-1 w-full rounded-md border px-2.5 py-1.5 font-mono text-sm outline-none focus:border-zinc-500 ${payloadError ? "border-red-300 bg-red-50/50" : "border-zinc-300"}`}
+                size="sm"
+                mono
+                className={payloadError ? "border-red-300 bg-red-50/50" : ""}
               />
-              {payloadError && (
-                <p className="mt-1 text-xs text-red-600">{payloadError}</p>
-              )}
-            </div>
+            </FormField>
             <div className="flex justify-end">
-              <button
+              <Button
                 type="submit"
-                disabled={addingVariant}
-                className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                size="sm"
+                loading={addingVariant}
+                loadingText="Adding..."
               >
-                {addingVariant ? "Adding..." : "Add"}
-              </button>
+                Add
+              </Button>
             </div>
           </form>
         )}
 
-        <div className="overflow-hidden rounded-lg border border-zinc-200">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 bg-zinc-50/60">
-                <th className="px-4 py-2.5 text-xs font-medium text-zinc-500">
-                  Name
-                </th>
-                <th className="px-4 py-2.5 text-xs font-medium text-zinc-500">
-                  Key
-                </th>
-                <th className="px-4 py-2.5 text-xs font-medium text-zinc-500">
-                  Payload
-                </th>
-                <th className="px-4 py-2.5 text-xs font-medium text-zinc-500">
-                  Allocation
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {experiment.variants.map((v) => {
-                const alloc = experiment.allocations.find(
-                  (a) => a.variantId === v.id,
-                );
-                return (
-                  <tr key={v.id}>
-                    <td className="px-4 py-3 font-medium text-zinc-900">
-                      {v.name}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-zinc-500">
-                      {v.key}
-                    </td>
-                    <td className="px-4 py-3">
-                      {v.payload ? (
-                        <code className="inline-block max-w-xs truncate rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-xs text-zinc-600">
-                          {JSON.stringify(v.payload)}
-                        </code>
-                      ) : (
-                        <span className="text-zinc-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-500">
-                      {alloc
-                        ? allocationPercent(alloc.rangeStart, alloc.rangeEnd)
-                        : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-              {experiment.variants.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="px-4 py-6 text-center text-sm text-zinc-400"
-                  >
-                    No variants yet. Add at least two to run this experiment.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={variantColumns}
+          data={experiment.variants}
+          rowKey={(v) => v.id}
+          hoverRows={false}
+          emptyMessage="No variants yet. Add at least two to run this experiment."
+        />
       </div>
 
       {/* Allocations */}
@@ -562,14 +541,15 @@ export default function ExperimentDetailPage() {
               Traffic allocation
             </h2>
             {experiment.status !== "ARCHIVED" && (
-              <button
+              <Button
+                variant="ghost"
+                size="xs"
                 onClick={() =>
                   editingAllocs ? setEditingAllocs(false) : startAllocEdit()
                 }
-                className="text-xs font-medium text-zinc-500 hover:text-zinc-900"
               >
                 {editingAllocs ? "Cancel" : "Edit allocation"}
-              </button>
+              </Button>
             )}
           </div>
 
@@ -608,13 +588,15 @@ export default function ExperimentDetailPage() {
                   Total: {totalAllocPct.toFixed(1)}%
                   {totalAllocPct > 100 && " (exceeds 100%)"}
                 </p>
-                <button
+                <Button
+                  size="sm"
                   onClick={handleSaveAllocs}
-                  disabled={savingAllocs || totalAllocPct > 100}
-                  className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                  disabled={totalAllocPct > 100}
+                  loading={savingAllocs}
+                  loadingText="Saving..."
                 >
-                  {savingAllocs ? "Saving..." : "Save allocation"}
-                </button>
+                  Save allocation
+                </Button>
               </div>
             </div>
           ) : (
@@ -698,6 +680,6 @@ export default function ExperimentDetailPage() {
           </span>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }
