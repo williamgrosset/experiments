@@ -333,7 +333,7 @@ export default function ExperimentDetailPage() {
               {s === "RUNNING" ? "Start" : s === "PAUSED" ? "Pause" : "Archive"}
             </button>
           ))}
-          {experiment.status === "RUNNING" && (
+          {(experiment.status === "RUNNING" || experiment.status === "PAUSED") && (
             <button
               onClick={handlePublish}
               disabled={publishing}
