@@ -98,6 +98,21 @@ export class ExperimentService {
     });
   }
 
+  async delete(id: string) {
+    const experiment = await prisma.experiment.findUnique({
+      where: { id },
+      include: { environment: true },
+    });
+
+    if (!experiment) {
+      throw new Error("Experiment not found");
+    }
+
+    await prisma.experiment.delete({ where: { id } });
+
+    return experiment;
+  }
+
   async setAllocations(
     experimentId: string,
     allocations: Array<{

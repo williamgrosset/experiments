@@ -113,6 +113,26 @@ export async function experimentRoutes(app: FastifyInstance) {
     }
   });
 
+  app.delete<{
+    Params: { id: string };
+  }>("/experiments/:id", async (request, reply) => {
+    try {
+      const experiment = await experimentService.delete(request.params.id);
+
+      // Re-publish the config snapshot so the decision service
+      // stops serving the deleted experiment.
+      await configPublisher.publish(experiment.environmentId);
+
+      return reply.send(experiment);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      if (message.includes("not found")) {
+        return reply.status(404).send({ error: "Experiment not found" });
+      }
+      throw err;
+    }
+  });
+
   app.post<{
     Params: { id: string };
   }>("/experiments/:id/publish", async (request, reply) => {

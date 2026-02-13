@@ -8,6 +8,7 @@ import {
   updateExperiment,
   updateExperimentStatus,
   publishExperiment,
+  deleteExperiment,
   createVariant,
   setAllocations,
 } from "@/lib/api";
@@ -62,6 +63,10 @@ export default function ExperimentDetailPage() {
 
   // Publishing
   const [publishing, setPublishing] = useState(false);
+
+  // Delete
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -119,6 +124,20 @@ export default function ExperimentDetailPage() {
       setError(err instanceof Error ? err.message : "Failed to publish");
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!experiment) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await deleteExperiment(experiment.id);
+      router.push("/experiments");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete");
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   }
 
@@ -323,12 +342,54 @@ export default function ExperimentDetailPage() {
               {publishing ? "Publishing..." : "Publish config"}
             </button>
           )}
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+          >
+            Delete
+          </button>
         </div>
       </div>
 
       {error && (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-6 shadow-lg">
+            <h3 className="text-base font-semibold text-zinc-900">
+              Delete experiment
+            </h3>
+            <p className="mt-2 text-sm text-zinc-500">
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-zinc-700">
+                {experiment.name}
+              </span>
+              ? This will permanently remove the experiment, its variants, and
+              allocations. The environment config will be re-published to
+              reflect this change.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -99,6 +99,10 @@ export function publishExperiment(id: string): Promise<unknown> {
   return request(`/experiments/${id}/publish`, { method: "POST" });
 }
 
+export function deleteExperiment(id: string): Promise<Experiment> {
+  return request<Experiment>(`/experiments/${id}`, { method: "DELETE" });
+}
+
 // --- Variants ---
 
 export function createVariant(
