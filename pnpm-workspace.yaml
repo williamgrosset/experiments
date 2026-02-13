@@ -3,6 +3,7 @@ packages:
   - experiment-service
   - decision-service
   - dashboard
+  - integration-tests
   - packages/*
 
 ignoredBuiltDependencies:

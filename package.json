@@ -8,7 +8,8 @@
     "dev:decision": "pnpm --filter decision-service run dev",
     "dev:gateway": "pnpm --filter api-gateway run dev",
     "dev:dashboard": "pnpm --filter dashboard run dev",
-    "lint": "pnpm -r run lint"
+    "lint": "pnpm -r run lint",
+    "test:integration": "pnpm --filter integration-tests run test"
   },
   "engines": {
     "node": ">=20.0.0"

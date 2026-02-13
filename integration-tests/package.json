@@ -1,0 +1,14 @@
+{
+  "name": "integration-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@experiments/shared": "workspace:*",
+    "vitest": "^3.2.1"
+  }
+}
