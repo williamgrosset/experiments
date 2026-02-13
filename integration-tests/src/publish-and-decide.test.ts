@@ -37,10 +37,8 @@ import {
  * The decision-service is started with default environments: ["dev", "staging", "prod"].
  * Its ConfigStore only monitors those environment names. We must use one of them
  * so the decision-service actually picks up the published config via Pub/Sub.
- *
- * We use "staging" to avoid interfering with any manual "prod" or "dev" data.
  */
-const ENV_NAME = "staging";
+const ENV_NAME = "dev";
 
 /** Unique suffix to avoid collisions with previous test runs */
 const RUN_ID = Date.now().toString(36);
