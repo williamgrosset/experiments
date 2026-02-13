@@ -22,6 +22,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { getBucket } from "@experiments/shared";
 import {
   waitForServices,
+  waitForConfigPropagation,
   createEnvironment,
   createExperiment,
   addVariant,
@@ -189,10 +190,15 @@ describe("End-to-end: config publish and decide", () => {
   // then verify the /decide endpoint returns a valid assignment.
   // --------------------------------------------------------------------------
   it("should return a variant assignment from the decision service", async () => {
-    // Allow brief propagation time for Pub/Sub delivery
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
+    // Poll until Pub/Sub propagation delivers the config to decision-service
+    // instead of sleeping a fixed duration
     const userKey = `user-integration-${RUN_ID}`;
+    await waitForConfigPropagation({
+      userKey,
+      env: ENV_NAME,
+      experimentKey: EXPERIMENT_KEY,
+    });
+
     const res = await decide({ userKey, env: ENV_NAME });
 
     expect(res.status).toBe(200);

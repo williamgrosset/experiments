@@ -210,6 +210,40 @@ export function decide(params: {
 // Health check helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Poll the decision-service /decide endpoint until the config contains
+ * a specific experiment key (i.e. Pub/Sub propagation is complete).
+ * Returns as soon as the assignment appears instead of sleeping a fixed delay.
+ */
+export async function waitForConfigPropagation(params: {
+  userKey: string;
+  env: string;
+  experimentKey: string;
+  timeoutMs?: number;
+  intervalMs?: number;
+}): Promise<DecideResponse> {
+  const { userKey, env, experimentKey } = params;
+  const timeoutMs = params.timeoutMs ?? 5_000;
+  const intervalMs = params.intervalMs ?? 25;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const res = await decide({ userKey, env });
+    if (
+      res.status === 200 &&
+      res.data.assignments.some((a) => a.experiment_key === experimentKey)
+    ) {
+      return res.data;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new Error(
+    `Config for experiment "${experimentKey}" did not propagate to ` +
+      `decision-service within ${timeoutMs}ms`
+  );
+}
+
 export async function waitForServices(
   timeoutMs = 10_000,
   intervalMs = 500
