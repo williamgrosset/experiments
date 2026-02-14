@@ -275,32 +275,46 @@ describe("End-to-end: config publish and decide", () => {
     expect(assignment!.variant_id).toBe(expectedVariantId);
   });
 
-  // --------------------------------------------------------------------------
-  // Step 10: Different users can land in different variants
+  // Step 10: Distribution sanity check across many users
   //
-  // With a 50/50 split over 10,000 buckets, if we test enough users we should
-  // see both variants represented. This verifies allocation ranges are working.
+  // For a 50/50 allocation, sampled assignments should be approximately balanced.
+  // We use N=200 users and accept a wide 40-60% range per variant to reduce
+  // flakiness while still catching obvious skew/regressions in bucketing.
   // --------------------------------------------------------------------------
-  it("should assign different users to different variants (distribution)", async () => {
-    const variantsSeen = new Set<string>();
+  it("should produce a roughly 50/50 split across many users", async () => {
+    const SAMPLE_SIZE = 200;
+    const MIN_RATIO = 0.4;
+    const MAX_RATIO = 0.6;
 
-    // Test 50 users — statistically near-certain to hit both sides of a 50/50
-    for (let i = 0; i < 50; i++) {
+    let controlCount = 0;
+    let treatmentCount = 0;
+
+    for (let i = 0; i < SAMPLE_SIZE; i++) {
       const userKey = `user-dist-${RUN_ID}-${i}`;
       const res = await decide({ userKey, env: ENV_NAME });
+      expect(res.status).toBe(200);
 
       const assignment = res.data.assignments.find(
         (a) => a.experiment_key === EXPERIMENT_KEY
       );
-      if (assignment) {
-        variantsSeen.add(assignment.variant_key);
-      }
+      expect(assignment).toBeDefined();
 
-      // Early exit once we've seen both
-      if (variantsSeen.size === 2) break;
+      if (assignment!.variant_key === "control") {
+        controlCount++;
+      } else if (assignment!.variant_key === "treatment") {
+        treatmentCount++;
+      }
     }
 
-    expect(variantsSeen.has("control")).toBe(true);
-    expect(variantsSeen.has("treatment")).toBe(true);
+    const total = controlCount + treatmentCount;
+    expect(total).toBe(SAMPLE_SIZE);
+
+    const controlRatio = controlCount / total;
+    const treatmentRatio = treatmentCount / total;
+
+    expect(controlRatio).toBeGreaterThanOrEqual(MIN_RATIO);
+    expect(controlRatio).toBeLessThanOrEqual(MAX_RATIO);
+    expect(treatmentRatio).toBeGreaterThanOrEqual(MIN_RATIO);
+    expect(treatmentRatio).toBeLessThanOrEqual(MAX_RATIO);
   });
 });
