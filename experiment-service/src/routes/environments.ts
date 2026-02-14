@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { createEnvironmentSchema } from "@experiments/shared";
-import { prisma } from "../lib/prisma.js";
+import { environmentService } from "../services/environment.service.js";
 
 export async function environmentRoutes(app: FastifyInstance) {
   app.post("/environments", async (request, reply) => {
@@ -10,28 +10,29 @@ export async function environmentRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: parsed.error.issues[0].message });
     }
 
-    const { name } = parsed.data;
-
-    const environment = await prisma.environment.create({
-      data: { name },
-    });
-
-    return reply.status(201).send(environment);
+    try {
+      const environment = await environmentService.create(parsed.data);
+      return reply.status(201).send(environment);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      if (message.includes("Unique constraint")) {
+        return reply.status(409).send({
+          error: `Environment with name "${parsed.data.name}" already exists`,
+        });
+      }
+      throw err;
+    }
   });
 
   app.get("/environments", async (_request, reply) => {
-    const environments = await prisma.environment.findMany({
-      orderBy: { name: "asc" },
-    });
+    const environments = await environmentService.list();
     return reply.send(environments);
   });
 
   app.get<{
     Params: { id: string };
   }>("/environments/:id", async (request, reply) => {
-    const environment = await prisma.environment.findUnique({
-      where: { id: request.params.id },
-    });
+    const environment = await environmentService.getById(request.params.id);
 
     if (!environment) {
       return reply.status(404).send({ error: "Environment not found" });
