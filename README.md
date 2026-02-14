@@ -2,6 +2,8 @@
 
 An experimentation platform for managing feature flags and A/B tests with deterministic, low-latency variant assignment.
 
+## Demo
+
 ![demo](https://github.com/user-attachments/assets/94ccaa95-0afe-47fb-8184-263c03ab67fe)
 
 ## Architecture
