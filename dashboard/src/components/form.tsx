@@ -71,11 +71,29 @@ interface SelectProps
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   function Select({ size = "md", variant = "form", className, ...props }, ref) {
     return (
-      <select
-        ref={ref}
-        className={`w-full border bg-white text-sm outline-none ${inputSizeStyles[size]} ${selectVariantStyles[variant]} ${className ?? ""}`}
-        {...props}
-      />
+      <div className="relative w-full">
+        <select
+          ref={ref}
+          className={`w-full appearance-none border bg-white pr-8 text-sm outline-none ${inputSizeStyles[size]} ${selectVariantStyles[variant]} ${className ?? ""}`}
+          {...props}
+        />
+        <svg
+          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500"
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M2.5 4.5L6 8L9.5 4.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
     );
   },
 );
