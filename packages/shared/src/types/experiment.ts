@@ -33,6 +33,13 @@ export interface TargetingRule {
   conditions: TargetingCondition[]; // AND within a rule
 }
 
+export interface Environment {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Experiment {
   id: string;
   key: string;
@@ -41,9 +48,12 @@ export interface Experiment {
   salt: string;
   status: ExperimentStatus;
   environmentId: string;
+  environment?: Environment;
   variants: Variant[];
   allocations: Allocation[];
   targetingRules: TargetingRule[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ConfigSnapshot {

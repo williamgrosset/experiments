@@ -1,5 +1,5 @@
 import { statusColor, statusDot } from "@/lib/utils";
-import type { ExperimentStatus } from "@/lib/types";
+import type { ExperimentStatus } from "@experiments/shared";
 
 interface StatusBadgeProps {
   status: ExperimentStatus;

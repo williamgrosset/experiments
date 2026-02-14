@@ -8,7 +8,7 @@ import type {
   TargetingRule,
   TargetingCondition,
   RuleOperator,
-} from "@/lib/types";
+} from "@experiments/shared";
 import { Spinner } from "@/components/spinner";
 import { Button } from "@/components/button";
 import { Input, Textarea, Select, FormField } from "@/components/form";

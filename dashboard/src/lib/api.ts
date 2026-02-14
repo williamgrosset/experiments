@@ -5,7 +5,7 @@ import type {
   Variant,
   Allocation,
   TargetingRule,
-} from "./types";
+} from "@experiments/shared";
 
 const BASE = "/api";
 

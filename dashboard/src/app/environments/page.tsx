@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchEnvironments, createEnvironment } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { Environment } from "@/lib/types";
+import type { Environment } from "@experiments/shared";
 import { Spinner } from "@/components/spinner";
 import { Button } from "@/components/button";
 import { Modal } from "@/components/modal";

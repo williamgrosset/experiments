@@ -13,7 +13,7 @@ import {
   setAllocations,
 } from "@/lib/api";
 import { formatDateTime, allocationPercent } from "@/lib/utils";
-import type { Experiment, ExperimentStatus } from "@/lib/types";
+import type { Experiment, ExperimentStatus } from "@experiments/shared";
 import { Spinner } from "@/components/spinner";
 import { Button } from "@/components/button";
 import { StatusBadge } from "@/components/status-badge";

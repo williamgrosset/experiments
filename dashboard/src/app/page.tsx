@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchExperiments, fetchEnvironments } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { Experiment, Environment, ExperimentStatus } from "@/lib/types";
+import type { Experiment, Environment, ExperimentStatus } from "@experiments/shared";
 import { Spinner } from "@/components/spinner";
 import { StatusBadge } from "@/components/status-badge";
 import { DataTable, type Column } from "@/components/data-table";

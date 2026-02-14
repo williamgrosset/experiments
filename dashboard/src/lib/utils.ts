@@ -1,4 +1,4 @@
-import type { ExperimentStatus } from "./types";
+import type { ExperimentStatus } from "@experiments/shared";
 
 export function statusColor(status: ExperimentStatus): string {
   switch (status) {
