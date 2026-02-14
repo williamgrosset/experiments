@@ -148,5 +148,4 @@ pnpm --filter decision-service run build
 | Variable | Default | Description |
 |---|---|---|
 | `CONFIG_BASE_URL` | `http://localhost:9000/experiment-configs` | Base URL for config snapshots (CDN in production, MinIO locally) |
-| `CONFIG_POLL_INTERVAL_MS` | `5000` | How often to poll for config updates (ms) |
 | `DECISION_SERVICE_PORT` | `3002` | HTTP port |

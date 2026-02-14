@@ -2,6 +2,8 @@
 
 An experimentation platform for managing feature flags and A/B tests with deterministic, low-latency variant assignment.
 
+![demo](https://github.com/user-attachments/assets/94ccaa95-0afe-47fb-8184-263c03ab67fe)
+
 ## Architecture
 
 The platform is split into two planes:
@@ -49,7 +51,7 @@ pnpm install
 ### 2. Start infrastructure
 
 ```bash
-docker compose up -d
+docker compose up
 ```
 
 ### 3. Set up the database
