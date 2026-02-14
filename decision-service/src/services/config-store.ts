@@ -1,13 +1,15 @@
 import type { ConfigSnapshot } from "@experiments/shared";
-import { redis, redisSub } from "../lib/redis.js";
 
-const POLL_INTERVAL_MS = 30_000; // Safety-net poll every 30s
+const POLL_INTERVAL_MS = 5_000; // Poll every 5 seconds
+
+const CONFIG_BASE_URL =
+  process.env["CONFIG_BASE_URL"] || "http://localhost:9000/experiment-configs";
 
 /**
  * In-memory config store for the decision service.
  *
- * Maintains one ConfigSnapshot per environment, loaded from Redis.
- * Updates via Redis Pub/Sub with polling as a fallback.
+ * Maintains one ConfigSnapshot per environment, loaded from S3/MinIO.
+ * Polls for updates on a regular interval using a lightweight version check.
  */
 export class ConfigStore {
   private configs: Map<string, ConfigSnapshot> = new Map();
@@ -24,26 +26,10 @@ export class ConfigStore {
       [...this.environments].map((env) => this.loadConfig(env))
     );
 
-    // Subscribe to config update notifications
-    await redisSub.subscribe("config:updates");
-    redisSub.on("message", async (_channel: string, message: string) => {
-      try {
-        const update = JSON.parse(message) as {
-          environment: string;
-          version: number;
-        };
-        if (this.environments.has(update.environment)) {
-          await this.loadConfig(update.environment);
-        }
-      } catch {
-        // Ignore malformed messages
-      }
-    });
-
-    // Start polling as a safety net
+    // Start polling for updates
     this.pollTimer = setInterval(async () => {
       for (const env of this.environments) {
-        await this.loadConfig(env);
+        await this.checkForUpdate(env);
       }
     }, POLL_INTERVAL_MS);
   }
@@ -53,23 +39,39 @@ export class ConfigStore {
       clearInterval(this.pollTimer);
       this.pollTimer = null;
     }
-    await redisSub.unsubscribe("config:updates");
   }
 
   getConfig(environment: string): ConfigSnapshot | undefined {
     return this.configs.get(environment);
   }
 
+  /**
+   * Lightweight version check — only fetches the full snapshot if version changed.
+   */
+  private async checkForUpdate(environment: string): Promise<void> {
+    try {
+      const versionUrl = `${CONFIG_BASE_URL}/configs/${environment}/version.json`;
+      const res = await fetch(versionUrl);
+      if (!res.ok) return;
+
+      const { version } = (await res.json()) as { version: number };
+      const current = this.configs.get(environment);
+
+      if (!current || version > current.version) {
+        await this.loadConfig(environment);
+      }
+    } catch {
+      // S3/MinIO unreachable — keep serving last known config
+    }
+  }
+
   private async loadConfig(environment: string): Promise<void> {
     try {
-      const configKey = `env:${environment}:config`;
-      const data = await redis.get(configKey);
+      const snapshotUrl = `${CONFIG_BASE_URL}/configs/${environment}/snapshots/latest.json`;
+      const res = await fetch(snapshotUrl);
+      if (!res.ok) return;
 
-      if (!data) {
-        return;
-      }
-
-      const snapshot = JSON.parse(data) as ConfigSnapshot;
+      const snapshot = (await res.json()) as ConfigSnapshot;
       const current = this.configs.get(environment);
 
       // Only update if version is newer (or first load)
@@ -77,7 +79,7 @@ export class ConfigStore {
         this.configs.set(environment, snapshot);
       }
     } catch {
-      // If Redis is down, serve from last known config — do nothing
+      // S3/MinIO unreachable — keep serving last known config
     }
   }
 }

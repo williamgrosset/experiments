@@ -7,14 +7,14 @@
  *   1. Create an environment in experiment-service (Postgres)
  *   2. Create an experiment with two variants and a 50/50 allocation
  *   3. Set the experiment status to RUNNING
- *   4. Publish the config (experiment-service -> Redis -> Pub/Sub)
- *   5. Decision-service picks up the config via Pub/Sub
+ *   4. Publish the config (experiment-service -> S3/MinIO)
+ *   5. Decision-service picks up the config via S3 polling
  *   6. GET /decide returns the correct variant assignment for a user
  *   7. The same user always gets the same variant (deterministic)
  *   8. Different users can get different variants (distribution)
  *
  * Prerequisites:
- *   - PostgreSQL and Redis running (docker compose up)
+ *   - PostgreSQL and MinIO running (docker compose up)
  *   - experiment-service running on :3001
  *   - decision-service running on :3002
  */
@@ -36,7 +36,7 @@ import {
 /**
  * The decision-service is started with default environments: ["dev", "staging", "prod"].
  * Its ConfigStore only monitors those environment names. We must use one of them
- * so the decision-service actually picks up the published config via Pub/Sub.
+ * so the decision-service actually picks up the published config via S3 polling.
  */
 const ENV_NAME = "dev";
 
@@ -163,7 +163,7 @@ describe("End-to-end: config publish and decide", () => {
   // --------------------------------------------------------------------------
   // Step 6: Publish the config
   // --------------------------------------------------------------------------
-  it("should publish config snapshot to Redis", async () => {
+  it("should publish config snapshot to S3", async () => {
     const res = await publishConfig(experimentId);
 
     expect(res.status).toBe(200);
@@ -182,12 +182,12 @@ describe("End-to-end: config publish and decide", () => {
   // --------------------------------------------------------------------------
   // Step 7: Decision-service returns a variant for a user
   //
-  // After publishing, the decision-service receives the config via Redis
-  // Pub/Sub and loads it into memory. We give it a short moment to propagate,
+  // After publishing, the decision-service picks up the config via S3
+  // polling and loads it into memory. We give it a short moment to propagate,
   // then verify the /decide endpoint returns a valid assignment.
   // --------------------------------------------------------------------------
   it("should return a variant assignment from the decision service", async () => {
-    // Poll until Pub/Sub propagation delivers the config to decision-service
+    // Poll until S3 polling propagation delivers the config to decision-service
     // instead of sleeping a fixed duration
     const userKey = `user-integration-${RUN_ID}`;
     await waitForConfigPropagation({

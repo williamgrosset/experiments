@@ -5,12 +5,12 @@ import type {
 } from "@experiments/shared";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
-import { redis } from "../lib/redis.js";
+import { putConfigObject } from "../lib/s3.js";
 
 export class ConfigPublisher {
   /**
    * Compile all RUNNING experiments for an environment into a config snapshot,
-   * write it to Redis, and notify subscribers.
+   * write it to S3, and store an audit record in Postgres.
    */
   async publish(environmentId: string): Promise<ConfigSnapshot> {
     const environment = await prisma.environment.findUnique({
@@ -65,12 +65,23 @@ export class ConfigPublisher {
       experiments: configExperiments,
     };
 
-    // Write to Redis
-    const configKey = `env:${environment.name}:config`;
-    const versionKey = `env:${environment.name}:config:version`;
+    const snapshotJson = JSON.stringify(snapshot);
 
-    await redis.set(configKey, JSON.stringify(snapshot));
-    await redis.set(versionKey, nextVersion.toString());
+    // Write to S3: versioned snapshot, latest snapshot, and version index
+    await Promise.all([
+      putConfigObject(
+        `configs/${environment.name}/snapshots/${nextVersion}.json`,
+        snapshotJson
+      ),
+      putConfigObject(
+        `configs/${environment.name}/snapshots/latest.json`,
+        snapshotJson
+      ),
+      putConfigObject(
+        `configs/${environment.name}/version.json`,
+        JSON.stringify({ version: nextVersion })
+      ),
+    ]);
 
     // Store version in DB for audit trail
     await prisma.configVersion.create({
@@ -80,15 +91,6 @@ export class ConfigPublisher {
         snapshot: snapshot as unknown as Prisma.InputJsonValue,
       },
     });
-
-    // Notify decision services via pub/sub
-    await redis.publish(
-      "config:updates",
-      JSON.stringify({
-        environment: environment.name,
-        version: nextVersion,
-      })
-    );
 
     return snapshot;
   }

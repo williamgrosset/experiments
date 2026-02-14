@@ -1,12 +1,12 @@
 # Decision Service
 
-The decision plane for the experimentation platform. Provides low-latency, deterministic variant assignment for users. Reads config snapshots from an in-memory cache populated via Redis.
+The decision plane for the experimentation platform. Provides low-latency, deterministic variant assignment for users. Reads config snapshots from an in-memory cache populated by polling S3 (MinIO locally).
 
 ## Responsibilities
 
 - Serve variant assignments via `GET /decide`
 - Maintain an in-memory config snapshot per environment
-- Subscribe to Redis Pub/Sub for real-time config updates
+- Poll S3 for config updates via lightweight version checks
 - Evaluate targeting rules against user context
 - Deterministic bucketing using MurmurHash3
 
@@ -14,11 +14,11 @@ The decision plane for the experimentation platform. Provides low-latency, deter
 
 ### Config Loading
 
-On startup, the service loads the latest config snapshot for each environment from Redis. It then subscribes to the `config:updates` Pub/Sub channel for real-time updates. A polling fallback (every 30s) ensures resilience if a Pub/Sub message is missed.
+On startup, the service attempts to load the latest config snapshot for each environment from S3. It then polls S3 every 5 seconds using a lightweight version check (`version.json`), only fetching the full snapshot when the version changes.
 
-When a new config is published, the service swaps the in-memory reference atomically — no locks, no read-during-write issues.
+When a new config is discovered, the service swaps the in-memory reference atomically — no locks, no read-during-write issues.
 
-If Redis is unreachable, the service continues serving from the last known in-memory config.
+If S3 is unreachable, the service continues serving from the last known in-memory config.
 
 ### Decision Flow
 
@@ -123,10 +123,10 @@ A `null` version means no config has been published for that environment yet.
 
 ### Prerequisites
 
-Redis must be running. From the repo root:
+MinIO must be running. From the repo root:
 
 ```bash
-docker compose up redis -d
+docker compose up -d
 ```
 
 ### Development
@@ -147,5 +147,6 @@ pnpm --filter decision-service run build
 
 | Variable | Default | Description |
 |---|---|---|
-| `REDIS_URL` | `redis://localhost:6379` | Redis connection string |
+| `CONFIG_BASE_URL` | `http://localhost:9000/experiment-configs` | Base URL for config snapshots (CDN in production, MinIO locally) |
+| `CONFIG_POLL_INTERVAL_MS` | `5000` | How often to poll for config updates (ms) |
 | `DECISION_SERVICE_PORT` | `3002` | HTTP port |

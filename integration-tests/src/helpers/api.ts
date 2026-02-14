@@ -212,7 +212,7 @@ export function decide(params: {
 
 /**
  * Poll the decision-service /decide endpoint until the config contains
- * a specific experiment key (i.e. Pub/Sub propagation is complete).
+ * a specific experiment key (i.e. S3 polling propagation is complete).
  * Returns as soon as the assignment appears instead of sleeping a fixed delay.
  */
 export async function waitForConfigPropagation(params: {
@@ -223,8 +223,8 @@ export async function waitForConfigPropagation(params: {
   intervalMs?: number;
 }): Promise<DecideResponse> {
   const { userKey, env, experimentKey } = params;
-  const timeoutMs = params.timeoutMs ?? 5_000;
-  const intervalMs = params.intervalMs ?? 25;
+  const timeoutMs = params.timeoutMs ?? 10_000;
+  const intervalMs = params.intervalMs ?? 250;
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
