@@ -11,7 +11,7 @@ The platform is split into two planes:
 - **API Gateway** (`api-gateway`) — Thin reverse proxy that routes external traffic to the appropriate service.
 - **Dashboard** (`dashboard`) — Web UI for creating environments, managing experiments, and publishing configs.
 
-![architecture-diagram](https://github.com/user-attachments/assets/8c48a4a7-91fe-4a7d-a26b-9eeb87f98c87)
+![architecture-diagram](https://github.com/user-attachments/assets/5f0b1b01-52a9-4284-bfbf-bfeba9bd0e3a)
 
 ## Tech Stack
 
