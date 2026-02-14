@@ -1,21 +1,22 @@
 import type { FastifyInstance } from "fastify";
 import type { Prisma } from "@prisma/client";
-import type { CreateVariantRequest } from "@experiments/shared";
+import { createVariantSchema } from "@experiments/shared";
 import { experimentService } from "../services/experiment.service.js";
 
 export async function variantRoutes(app: FastifyInstance) {
   app.post<{
     Params: { experimentId: string };
-    Body: CreateVariantRequest;
   }>("/experiments/:experimentId/variants", async (request, reply) => {
     const { experimentId } = request.params;
-    const { key, name, payload } = request.body;
+    const parsed = createVariantSchema.safeParse(request.body);
 
-    if (!key || !name) {
+    if (!parsed.success) {
       return reply
         .status(400)
-        .send({ error: "key and name are required" });
+        .send({ error: parsed.error.issues[0].message });
     }
+
+    const { key, name, payload } = parsed.data;
 
     try {
       const variant = await experimentService.addVariant(experimentId, {

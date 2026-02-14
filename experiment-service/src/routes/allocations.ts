@@ -1,22 +1,23 @@
 import type { FastifyInstance } from "fastify";
-import type { SetAllocationsRequest } from "@experiments/shared";
+import { setAllocationsSchema } from "@experiments/shared";
 import { experimentService } from "../services/experiment.service.js";
 
 export async function allocationRoutes(app: FastifyInstance) {
   app.put<{
     Params: { experimentId: string };
-    Body: SetAllocationsRequest;
   }>(
     "/experiments/:experimentId/allocations",
     async (request, reply) => {
       const { experimentId } = request.params;
-      const { allocations } = request.body;
+      const parsed = setAllocationsSchema.safeParse(request.body);
 
-      if (!Array.isArray(allocations)) {
+      if (!parsed.success) {
         return reply
           .status(400)
-          .send({ error: "allocations array is required" });
+          .send({ error: parsed.error.issues[0].message });
       }
+
+      const { allocations } = parsed.data;
 
       try {
         const result = await experimentService.setAllocations(

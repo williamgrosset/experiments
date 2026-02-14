@@ -1,15 +1,16 @@
 import type { FastifyInstance } from "fastify";
+import { createEnvironmentSchema } from "@experiments/shared";
 import { prisma } from "../lib/prisma.js";
 
 export async function environmentRoutes(app: FastifyInstance) {
-  app.post<{
-    Body: { name: string };
-  }>("/environments", async (request, reply) => {
-    const { name } = request.body;
+  app.post("/environments", async (request, reply) => {
+    const parsed = createEnvironmentSchema.safeParse(request.body);
 
-    if (!name || typeof name !== "string") {
-      return reply.status(400).send({ error: "name is required" });
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.issues[0].message });
     }
+
+    const { name } = parsed.data;
 
     const environment = await prisma.environment.create({
       data: { name },

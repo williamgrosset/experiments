@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { DecideResponse } from "@experiments/shared";
+import { decideRequestSchema } from "@experiments/shared";
 import type { ConfigStore } from "../services/config-store.js";
 import { assignVariants } from "../services/assigner.js";
 
@@ -9,20 +10,16 @@ export async function decideRoutes(
 ) {
   const { configStore } = opts;
 
-  app.get<{
-    Querystring: {
-      user_key: string;
-      env: string;
-      context?: string; // JSON-encoded context object
-    };
-  }>("/decide", async (request, reply) => {
-    const { user_key, env } = request.query;
+  app.get("/decide", async (request, reply) => {
+    const parsed = decideRequestSchema.safeParse(request.query);
 
-    if (!user_key || !env) {
+    if (!parsed.success) {
       return reply
         .status(400)
-        .send({ error: "user_key and env are required query parameters" });
+        .send({ error: parsed.error.issues[0].message });
     }
+
+    const { user_key, env } = parsed.data;
 
     const config = configStore.getConfig(env);
 
@@ -34,9 +31,9 @@ export async function decideRoutes(
 
     // Parse optional context
     let context: Record<string, unknown> = {};
-    if (request.query.context) {
+    if (parsed.data.context) {
       try {
-        context = JSON.parse(request.query.context);
+        context = JSON.parse(parsed.data.context);
       } catch {
         return reply.status(400).send({ error: "Invalid context JSON" });
       }

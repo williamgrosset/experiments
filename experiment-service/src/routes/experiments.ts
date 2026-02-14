@@ -1,24 +1,23 @@
 import type { FastifyInstance } from "fastify";
 import type { ExperimentStatus, Prisma } from "@prisma/client";
-import type {
-  CreateExperimentRequest,
-  UpdateExperimentRequest,
-  UpdateExperimentStatusRequest,
+import {
+  createExperimentSchema,
+  updateExperimentSchema,
+  updateExperimentStatusSchema,
 } from "@experiments/shared";
 import { experimentService } from "../services/experiment.service.js";
 import { configPublisher } from "../services/config-publisher.js";
 
 export async function experimentRoutes(app: FastifyInstance) {
-  app.post<{
-    Body: CreateExperimentRequest;
-  }>("/experiments", async (request, reply) => {
-    const { key, name, description, environmentId, targetingRules } = request.body;
+  app.post("/experiments", async (request, reply) => {
+    const parsed = createExperimentSchema.safeParse(request.body);
 
-    if (!key || !name || !environmentId) {
-      return reply
-        .status(400)
-        .send({ error: "key, name, and environmentId are required" });
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.issues[0].message });
     }
+
+    const { key, name, description, environmentId, targetingRules } =
+      parsed.data;
 
     try {
       const experiment = await experimentService.create({
@@ -65,9 +64,14 @@ export async function experimentRoutes(app: FastifyInstance) {
 
   app.patch<{
     Params: { id: string };
-    Body: UpdateExperimentRequest;
   }>("/experiments/:id", async (request, reply) => {
-    const { name, description, targetingRules } = request.body;
+    const parsed = updateExperimentSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.issues[0].message });
+    }
+
+    const { name, description, targetingRules } = parsed.data;
 
     try {
       const experiment = await experimentService.update(request.params.id, {
@@ -87,13 +91,14 @@ export async function experimentRoutes(app: FastifyInstance) {
 
   app.patch<{
     Params: { id: string };
-    Body: UpdateExperimentStatusRequest;
   }>("/experiments/:id/status", async (request, reply) => {
-    const { status } = request.body;
+    const parsed = updateExperimentStatusSchema.safeParse(request.body);
 
-    if (!status) {
-      return reply.status(400).send({ error: "status is required" });
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.issues[0].message });
     }
+
+    const { status } = parsed.data;
 
     try {
       const experiment = await experimentService.updateStatus(
