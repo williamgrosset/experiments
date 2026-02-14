@@ -23,6 +23,7 @@ import { PageContainer } from "@/components/page-layout";
 import { Input, Textarea, FormField } from "@/components/form";
 import { ErrorAlert } from "@/components/error-alert";
 import { StatCard } from "@/components/stat-card";
+import { useToast } from "@/components/toast";
 
 const STATUS_TRANSITIONS: Record<ExperimentStatus, ExperimentStatus[]> = {
   DRAFT: ["RUNNING", "ARCHIVED"],
@@ -65,8 +66,13 @@ export default function ExperimentDetailPage() {
   >([]);
   const [savingAllocs, setSavingAllocs] = useState(false);
 
+  // Status change (Start / Pause) loading
+  const [statusChanging, setStatusChanging] = useState<ExperimentStatus | null>(null);
+
   // Publishing
   const [publishing, setPublishing] = useState(false);
+
+  const { toast } = useToast();
 
   // Delete
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -109,11 +115,27 @@ export default function ExperimentDetailPage() {
   async function handleStatusChange(status: ExperimentStatus) {
     if (!experiment) return;
     setError("");
+    setStatusChanging(status);
     try {
       const updated = await updateExperimentStatus(experiment.id, status);
       setExperiment(updated);
+
+      // Publish config when starting or pausing
+      if (status === "RUNNING" || status === "PAUSED") {
+        try {
+          await publishExperiment(experiment.id);
+          toast("Config published successfully");
+        } catch (pubErr) {
+          toast(
+            pubErr instanceof Error ? pubErr.message : "Failed to publish config",
+            "error",
+          );
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update status");
+    } finally {
+      setStatusChanging(null);
     }
   }
 
@@ -363,6 +385,8 @@ export default function ExperimentDetailPage() {
               key={s}
               size="sm"
               onClick={() => handleStatusChange(s)}
+              loading={statusChanging === s}
+              disabled={statusChanging !== null}
               className={`text-xs ${STATUS_ACTION_STYLES[s] || "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}
             >
               {s === "RUNNING" ? "Start" : s === "PAUSED" ? "Pause" : "Archive"}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist } from "next/font/google";
+import { ToastProvider } from "@/components/toast";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"] });
@@ -77,7 +78,7 @@ export default function RootLayout({
 
           {/* Main content */}
           <main className="flex-1 overflow-y-auto">
-            {children}
+            <ToastProvider>{children}</ToastProvider>
           </main>
         </div>
       </body>
