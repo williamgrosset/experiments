@@ -9,6 +9,7 @@ The platform is split into two planes:
 - **Control Plane** (`experiment-service`) — CRUD operations for experiments, variants, allocations, and targeting rules. Writes to Postgres and publishes compiled config snapshots to Redis.
 - **Decision Plane** (`decision-service`) — Stateless, low-latency variant assignment. Reads config from an in-memory cache populated via Redis Pub/Sub.
 - **API Gateway** (`api-gateway`) — Thin reverse proxy that routes external traffic to the appropriate service.
+- **Dashboard** (`dashboard`) — Web UI for creating environments, managing experiments, and publishing configs.
 
 ![architecture-diagram](https://github.com/user-attachments/assets/8c48a4a7-91fe-4a7d-a26b-9eeb87f98c87)
 
@@ -53,13 +54,19 @@ pnpm --filter experiment-service run db:push
 pnpm dev
 ```
 
-This starts all three services concurrently with hot-reload. You can also run them individually:
+This starts all backend services plus the dashboard concurrently with hot-reload. You can also run them individually:
 
 ```bash
 pnpm dev:experiment   # starts on :3001
 pnpm dev:decision     # starts on :3002
 pnpm dev:gateway      # starts on :3000
+pnpm dev:dashboard    # starts on :3100
 ```
+
+After startup:
+
+- API Gateway: `http://localhost:3000`
+- Dashboard UI: `http://localhost:3100`
 
 ## Running the Flows
 
@@ -222,10 +229,11 @@ curl -sG "http://localhost:3000/api/decide" \
 ```
 experiments/
 ├── packages/shared/          # Shared types and hashing utility
-|—— dashboard/                # Dashboard for experiment CRUD
+├── dashboard/                # Next.js UI for managing environments and experiments
 ├── experiment-service/       # Control plane (Prisma + Postgres + Redis)
 ├── decision-service/         # Decision plane (in-memory config + Redis Pub/Sub)
 ├── api-gateway/              # Reverse proxy
+├── integration-tests/        # End-to-end and cross-service integration tests
 └── docker-compose.yml        # Local infrastructure (Postgres, Redis)
 ```
 
