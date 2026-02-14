@@ -10,26 +10,7 @@ The platform is split into two planes:
 - **Decision Plane** (`decision-service`) — Stateless, low-latency variant assignment. Reads config from an in-memory cache populated via Redis Pub/Sub.
 - **API Gateway** (`api-gateway`) — Thin reverse proxy that routes external traffic to the appropriate service.
 
-```
-                         ┌──────────────┐
-                         │  API Gateway │ :3000
-                         └──────┬───────┘
-                        ┌───────┴────────┐
-                        │                │
-               /api/experiments    /api/decide
-               /api/environments         │
-                        │                │
-              ┌─────────▼──────┐  ┌──────▼──────────┐
-              │  Experiment    │  │  Decision        │
-              │  Service :3001 │  │  Service :3002   │
-              └───────┬────────┘  └──────┬───────────┘
-                      │                  │
-               ┌──────▼──────┐    ┌──────▼──────┐
-               │  Postgres   │    │    Redis     │
-               │  (source of │◄───┤  (config     │
-               │   truth)    │    │   snapshots) │
-               └─────────────┘    └──────────────┘
-```
+![architecture-diagram](https://github.com/user-attachments/assets/7e017c2c-5f78-4ed9-bfe7-2b58c46dea20)
 
 ## Tech Stack
 
