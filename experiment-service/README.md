@@ -35,10 +35,10 @@ DRAFT ──► RUNNING ──► PAUSED
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/environments` | Create an environment |
-| `GET` | `/environments` | List all environments |
+| `GET` | `/environments` | List environments (paginated) |
 | `GET` | `/environments/:id` | Get environment by ID |
 | `POST` | `/experiments` | Create an experiment |
-| `GET` | `/experiments` | List experiments (filter by `environmentId`, `status`) |
+| `GET` | `/experiments` | List experiments (paginated, filter by `environmentId`, `status`) |
 | `GET` | `/experiments/:id` | Get experiment with variants and allocations |
 | `PATCH` | `/experiments/:id` | Update name, description, or targeting rules |
 | `PATCH` | `/experiments/:id/status` | Transition experiment status |
@@ -46,6 +46,38 @@ DRAFT ──► RUNNING ──► PAUSED
 | `PUT` | `/experiments/:experimentId/allocations` | Replace allocation ranges |
 | `POST` | `/experiments/:id/publish` | Compile and publish config snapshot to Redis |
 | `GET` | `/health` | Health check |
+
+### Pagination
+
+The `GET /environments` and `GET /experiments` endpoints return paginated responses with a consistent envelope:
+
+```json
+{
+  "data": [],
+  "pagination": {
+    "page": 1,
+    "pageSize": 20,
+    "total": 0,
+    "totalPages": 0
+  }
+}
+```
+
+Query parameters:
+
+| Parameter | Type | Default | Constraints |
+|---|---|---|---|
+| `page` | integer | `1` | Must be >= 1 |
+| `pageSize` | integer | `20` | Must be between 1 and 100 |
+
+Both parameters must be provided together or omitted entirely. When omitted, defaults are applied. Providing only one returns a `400` error.
+
+The `GET /experiments` endpoint also accepts optional filter parameters:
+
+| Parameter | Type | Description |
+|---|---|---|
+| `environmentId` | string | Filter by environment ID |
+| `status` | string | Filter by status (`DRAFT`, `RUNNING`, `PAUSED`, `ARCHIVED`) |
 
 ## Config Publishing
 
