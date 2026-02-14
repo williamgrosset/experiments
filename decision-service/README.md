@@ -67,7 +67,10 @@ Supported operators: `eq`, `neq`, `in`, `notIn`, `contains`, `gt`, `lt`
 **Example:**
 
 ```bash
-curl -s "http://localhost:3002/decide?user_key=user-123&env=prod" | jq
+curl -sG "http://localhost:3002/decide" \
+  --data-urlencode "user_key=user-123" \
+  --data-urlencode "env=prod" \
+  | jq
 ```
 
 **Response:**
@@ -92,7 +95,11 @@ curl -s "http://localhost:3002/decide?user_key=user-123&env=prod" | jq
 **With targeting context:**
 
 ```bash
-curl -s "http://localhost:3002/decide?user_key=user-123&env=prod&context=%7B%22country%22%3A%22US%22%7D" | jq
+curl -sG "http://localhost:3002/decide" \
+  --data-urlencode "user_key=user-123" \
+  --data-urlencode "env=prod" \
+  --data-urlencode 'context={"country":"US"}' \
+  | jq
 ```
 
 ### `GET /health`

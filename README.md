@@ -10,7 +10,7 @@ The platform is split into two planes:
 - **Decision Plane** (`decision-service`) — Stateless, low-latency variant assignment. Reads config from an in-memory cache populated via Redis Pub/Sub.
 - **API Gateway** (`api-gateway`) — Thin reverse proxy that routes external traffic to the appropriate service.
 
-![architecture-diagram](https://github.com/user-attachments/assets/7e017c2c-5f78-4ed9-bfe7-2b58c46dea20)
+![architecture-diagram](https://github.com/user-attachments/assets/8c48a4a7-91fe-4a7d-a26b-9eeb87f98c87)
 
 ## Tech Stack
 
@@ -152,7 +152,10 @@ curl -s -X POST http://localhost:3000/api/experiments/EXP_ID/publish | jq
 The decision service uses the published config to deterministically assign variants:
 
 ```bash
-curl -s "http://localhost:3000/api/decide?user_key=user-123&env=prod" | jq
+curl -sG "http://localhost:3000/api/decide" \
+  --data-urlencode "user_key=user-123" \
+  --data-urlencode "env=prod" \
+  | jq
 ```
 
 Response:
@@ -198,7 +201,11 @@ curl -s -X PATCH http://localhost:3000/api/experiments/EXP_ID \
 Then pass context with the decide call:
 
 ```bash
-curl -s "http://localhost:3000/api/decide?user_key=user-123&env=prod&context=%7B%22country%22%3A%22US%22%2C%22plan%22%3A%22pro%22%7D" | jq
+curl -sG "http://localhost:3000/api/decide" \
+  --data-urlencode "user_key=user-123" \
+  --data-urlencode "env=prod" \
+  --data-urlencode 'context={"country":"US","plan":"pro"}' \
+  | jq
 ```
 
 ## Gateway Routing
