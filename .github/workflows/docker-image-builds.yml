@@ -1,0 +1,28 @@
+name: Docker Image Builds
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  docker-image-builds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build api-gateway image
+        run: docker build -f api-gateway/Dockerfile -t experiments-api-gateway:ci .
+
+      - name: Build decision-service image
+        run: docker build -f decision-service/Dockerfile -t experiments-decision-service:ci .
+
+      - name: Build experiment-service image
+        run: docker build -f experiment-service/Dockerfile -t experiments-experiment-service:ci .

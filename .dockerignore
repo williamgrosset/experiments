@@ -1,0 +1,22 @@
+.git
+.github
+node_modules
+**/node_modules
+
+# Build artifacts
+dist
+**/dist
+dashboard/.next
+dashboard/out
+coverage
+**/coverage
+
+# Logs and temp files
+*.log
+logs
+.DS_Store
+
+# Environment files
+.env
+.env.*
+!.env.example
