@@ -107,6 +107,9 @@ docker compose up -d
 # Install dependencies (from repo root)
 pnpm install
 
+# Copy local environment variables
+cp experiment-service/.env.example experiment-service/.env
+
 # Push the Prisma schema to the database
 pnpm --filter experiment-service run db:push
 

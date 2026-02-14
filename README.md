@@ -56,13 +56,21 @@ pnpm install
 docker compose up
 ```
 
-### 3. Set up the database
+### 3. Configure environment variables
+
+```bash
+cp experiment-service/.env.example experiment-service/.env
+```
+
+This provides the local Postgres connection string used by Prisma and `experiment-service`.
+
+### 4. Set up the database
 
 ```bash
 pnpm --filter experiment-service run db:push
 ```
 
-### 4. Start the services
+### 5. Start the services
 
 ```bash
 pnpm dev
