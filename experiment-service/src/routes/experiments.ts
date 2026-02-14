@@ -1,9 +1,10 @@
 import type { FastifyInstance } from "fastify";
-import type { ExperimentStatus, Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import {
   createExperimentSchema,
   updateExperimentSchema,
   updateExperimentStatusSchema,
+  listExperimentsSchema,
 } from "@experiments/shared";
 import { experimentService } from "../services/experiment.service.js";
 import { configPublisher } from "../services/config-publisher.js";
@@ -39,15 +40,15 @@ export async function experimentRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get<{
-    Querystring: { environmentId?: string; status?: ExperimentStatus };
-  }>("/experiments", async (request, reply) => {
-    const { environmentId, status } = request.query;
-    const experiments = await experimentService.list({
-      environmentId,
-      status,
-    });
-    return reply.send(experiments);
+  app.get("/experiments", async (request, reply) => {
+    const parsed = listExperimentsSchema.safeParse(request.query);
+
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.issues[0].message });
+    }
+
+    const result = await experimentService.list(parsed.data);
+    return reply.send(result);
   });
 
   app.get<{

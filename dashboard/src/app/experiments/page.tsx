@@ -11,8 +11,10 @@ import { StatusBadge } from "@/components/status-badge";
 import { DataTable, type Column } from "@/components/data-table";
 import { PageContainer, PageHeader } from "@/components/page-layout";
 import { Select } from "@/components/form";
+import { Pagination } from "@/components/pagination";
 
 const STATUSES: ExperimentStatus[] = ["DRAFT", "RUNNING", "PAUSED", "ARCHIVED"];
+const PAGE_SIZE = 10;
 
 export default function ExperimentsPage() {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
@@ -20,25 +22,50 @@ export default function ExperimentsPage() {
   const [loading, setLoading] = useState(true);
   const [filterEnv, setFilterEnv] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const load = useCallback(() => {
     setLoading(true);
-    const params: { environmentId?: string; status?: ExperimentStatus } = {};
+    const params: {
+      environmentId?: string;
+      status?: ExperimentStatus;
+      page: number;
+      pageSize: number;
+    } = { page, pageSize: PAGE_SIZE };
     if (filterEnv) params.environmentId = filterEnv;
     if (filterStatus) params.status = filterStatus as ExperimentStatus;
     fetchExperiments(params)
-      .then(setExperiments)
+      .then((res) => {
+        setExperiments(res.data);
+        setTotal(res.pagination.total);
+        setTotalPages(res.pagination.totalPages);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [filterEnv, filterStatus]);
+  }, [filterEnv, filterStatus, page]);
 
   useEffect(() => {
-    fetchEnvironments().then(setEnvironments).catch(console.error);
+    fetchEnvironments({ page: 1, pageSize: 100 })
+      .then((res) => setEnvironments(res.data))
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Reset to page 1 when filters change
+  function handleFilterEnv(value: string) {
+    setFilterEnv(value);
+    setPage(1);
+  }
+
+  function handleFilterStatus(value: string) {
+    setFilterStatus(value);
+    setPage(1);
+  }
 
   const columns: Column<Experiment>[] = [
     {
@@ -105,7 +132,7 @@ export default function ExperimentsPage() {
       <div className="mb-4 flex items-center gap-3">
         <Select
           value={filterEnv}
-          onChange={(e) => setFilterEnv(e.target.value)}
+          onChange={(e) => handleFilterEnv(e.target.value)}
           variant="filter"
           size="sm"
           className="w-auto"
@@ -119,7 +146,7 @@ export default function ExperimentsPage() {
         </Select>
         <Select
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
+          onChange={(e) => handleFilterStatus(e.target.value)}
           variant="filter"
           size="sm"
           className="w-auto"
@@ -138,6 +165,7 @@ export default function ExperimentsPage() {
             onClick={() => {
               setFilterEnv("");
               setFilterStatus("");
+              setPage(1);
             }}
           >
             Clear filters
@@ -149,19 +177,28 @@ export default function ExperimentsPage() {
       {loading ? (
         <Spinner fullPage={false} />
       ) : (
-        <DataTable
-          columns={columns}
-          data={experiments}
-          rowKey={(exp) => exp.id}
-          emptyMessage={
-            <>
-              No experiments found.{" "}
-              <Link href="/experiments/new" className="text-zinc-900 underline">
-                Create one
-              </Link>
-            </>
-          }
-        />
+        <>
+          <DataTable
+            columns={columns}
+            data={experiments}
+            rowKey={(exp) => exp.id}
+            emptyMessage={
+              <>
+                No experiments found.{" "}
+                <Link href="/experiments/new" className="text-zinc-900 underline">
+                  Create one
+                </Link>
+              </>
+            }
+          />
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+          />
+        </>
       )}
     </PageContainer>
   );

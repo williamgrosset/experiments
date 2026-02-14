@@ -79,10 +79,10 @@ export default function NewExperimentPage() {
   const [targetingRules, setTargetingRules] = useState<TargetingRule[]>([]);
 
   useEffect(() => {
-    fetchEnvironments()
-      .then((envs) => {
-        setEnvironments(envs);
-        if (envs.length > 0) setEnvironmentId(envs[0].id);
+    fetchEnvironments({ page: 1, pageSize: 100 })
+      .then((res) => {
+        setEnvironments(res.data);
+        if (res.data.length > 0) setEnvironmentId(res.data[0].id);
       })
       .catch(console.error)
       .finally(() => setLoading(false));

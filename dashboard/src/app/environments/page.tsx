@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { fetchEnvironments, createEnvironment } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { Environment } from "@experiments/shared";
@@ -10,6 +10,9 @@ import { Modal } from "@/components/modal";
 import { DataTable, type Column } from "@/components/data-table";
 import { PageContainer, PageHeader } from "@/components/page-layout";
 import { Input, FormField } from "@/components/form";
+import { Pagination } from "@/components/pagination";
+
+const PAGE_SIZE = 10;
 
 export default function EnvironmentsPage() {
   const [environments, setEnvironments] = useState<Environment[]>([]);
@@ -18,23 +21,36 @@ export default function EnvironmentsPage() {
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-  useEffect(() => {
-    fetchEnvironments()
-      .then(setEnvironments)
+  const load = useCallback(() => {
+    setLoading(true);
+    fetchEnvironments({ page, pageSize: PAGE_SIZE })
+      .then((res) => {
+        setEnvironments(res.data);
+        setTotal(res.pagination.total);
+        setTotalPages(res.pagination.totalPages);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
     setError("");
     try {
-      const env = await createEnvironment(name.trim());
-      setEnvironments((prev) => [...prev, env]);
+      await createEnvironment(name.trim());
       setName("");
       setShowCreate(false);
+      // Reload current page to reflect new data
+      load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create environment");
     } finally {
@@ -63,7 +79,7 @@ export default function EnvironmentsPage() {
     },
   ];
 
-  if (loading) {
+  if (loading && environments.length === 0) {
     return <Spinner />;
   }
 
@@ -124,12 +140,25 @@ export default function EnvironmentsPage() {
       </Modal>
 
       {/* Table */}
-      <DataTable
-        columns={columns}
-        data={environments}
-        rowKey={(env) => env.id}
-        emptyMessage="No environments yet. Create one to get started."
-      />
+      {loading ? (
+        <Spinner fullPage={false} />
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            data={environments}
+            rowKey={(env) => env.id}
+            emptyMessage="No environments yet. Create one to get started."
+          />
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+          />
+        </>
+      )}
     </PageContainer>
   );
 }

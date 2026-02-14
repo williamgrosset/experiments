@@ -1,5 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { createEnvironmentSchema } from "@experiments/shared";
+import {
+  createEnvironmentSchema,
+  listEnvironmentsSchema,
+} from "@experiments/shared";
 import { environmentService } from "../services/environment.service.js";
 
 export async function environmentRoutes(app: FastifyInstance) {
@@ -24,9 +27,15 @@ export async function environmentRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get("/environments", async (_request, reply) => {
-    const environments = await environmentService.list();
-    return reply.send(environments);
+  app.get("/environments", async (request, reply) => {
+    const parsed = listEnvironmentsSchema.safeParse(request.query);
+
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.issues[0].message });
+    }
+
+    const result = await environmentService.list(parsed.data);
+    return reply.send(result);
   });
 
   app.get<{

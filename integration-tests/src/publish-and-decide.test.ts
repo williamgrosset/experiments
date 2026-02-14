@@ -79,11 +79,10 @@ describe("End-to-end: config publish and decide", () => {
     } else {
       // Environment already exists — look it up via the list endpoint
       const listRes = await fetch("http://localhost:3001/environments");
-      const envs = (await listRes.json()) as Array<{
-        id: string;
-        name: string;
-      }>;
-      const existing = envs.find((e) => e.name === ENV_NAME);
+      const body = (await listRes.json()) as {
+        data: Array<{ id: string; name: string }>;
+      };
+      const existing = body.data.find((e) => e.name === ENV_NAME);
       expect(existing).toBeDefined();
       environmentId = existing!.id;
     }

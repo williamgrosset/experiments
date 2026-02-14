@@ -7,10 +7,28 @@ export class EnvironmentService {
     });
   }
 
-  async list() {
-    return prisma.environment.findMany({
-      orderBy: { name: "asc" },
-    });
+  async list(pagination: { page: number; pageSize: number }) {
+    const { page, pageSize } = pagination;
+    const skip = (page - 1) * pageSize;
+
+    const [data, total] = await Promise.all([
+      prisma.environment.findMany({
+        orderBy: { name: "asc" },
+        skip,
+        take: pageSize,
+      }),
+      prisma.environment.count(),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    };
   }
 
   async getById(id: string) {

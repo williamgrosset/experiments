@@ -5,6 +5,7 @@ import type {
   Variant,
   Allocation,
   TargetingRule,
+  PaginatedResponse,
 } from "@experiments/shared";
 
 const BASE = "/api";
@@ -30,8 +31,17 @@ async function request<T>(
 
 // --- Environments ---
 
-export function fetchEnvironments(): Promise<Environment[]> {
-  return request<Environment[]>("/environments");
+export function fetchEnvironments(params?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedResponse<Environment>> {
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+  const qs = query.toString();
+  return request<PaginatedResponse<Environment>>(
+    `/environments${qs ? `?${qs}` : ""}`,
+  );
 }
 
 export function fetchEnvironment(id: string): Promise<Environment> {
@@ -50,12 +60,18 @@ export function createEnvironment(name: string): Promise<Environment> {
 export function fetchExperiments(params?: {
   environmentId?: string;
   status?: ExperimentStatus;
-}): Promise<Experiment[]> {
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedResponse<Experiment>> {
   const query = new URLSearchParams();
   if (params?.environmentId) query.set("environmentId", params.environmentId);
   if (params?.status) query.set("status", params.status);
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.pageSize) query.set("pageSize", String(params.pageSize));
   const qs = query.toString();
-  return request<Experiment[]>(`/experiments${qs ? `?${qs}` : ""}`);
+  return request<PaginatedResponse<Experiment>>(
+    `/experiments${qs ? `?${qs}` : ""}`,
+  );
 }
 
 export function fetchExperiment(id: string): Promise<Experiment> {

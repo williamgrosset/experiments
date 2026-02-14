@@ -30,17 +30,42 @@ export class ExperimentService {
     });
   }
 
-  async list(filters?: { environmentId?: string; status?: ExperimentStatus }) {
-    return prisma.experiment.findMany({
-      where: {
-        ...(filters?.environmentId && {
-          environmentId: filters.environmentId,
-        }),
-        ...(filters?.status && { status: filters.status }),
+  async list(filters: {
+    environmentId?: string;
+    status?: ExperimentStatus;
+    page: number;
+    pageSize: number;
+  }) {
+    const where = {
+      ...(filters.environmentId && {
+        environmentId: filters.environmentId,
+      }),
+      ...(filters.status && { status: filters.status }),
+    };
+
+    const { page, pageSize } = filters;
+    const skip = (page - 1) * pageSize;
+
+    const [data, total] = await Promise.all([
+      prisma.experiment.findMany({
+        where,
+        include: { variants: true, allocations: true, environment: true },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+      }),
+      prisma.experiment.count({ where }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
       },
-      include: { variants: true, allocations: true, environment: true },
-      orderBy: { createdAt: "desc" },
-    });
+    };
   }
 
   async getById(id: string) {

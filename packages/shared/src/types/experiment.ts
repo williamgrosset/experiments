@@ -71,3 +71,13 @@ export interface ConfigExperiment {
   variants: Pick<Variant, "id" | "key" | "payload">[];
   allocations: Pick<Allocation, "variantId" | "rangeStart" | "rangeEnd">[];
 }
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}

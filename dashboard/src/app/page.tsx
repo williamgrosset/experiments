@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchExperiments, fetchEnvironments } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { Experiment, Environment, ExperimentStatus } from "@experiments/shared";
+import type { Experiment, ExperimentStatus } from "@experiments/shared";
 import { Spinner } from "@/components/spinner";
 import { StatusBadge } from "@/components/status-badge";
 import { DataTable, type Column } from "@/components/data-table";
@@ -13,14 +13,19 @@ import { StatCard } from "@/components/stat-card";
 
 export default function OverviewPage() {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
-  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [totalExperiments, setTotalExperiments] = useState(0);
+  const [totalEnvironments, setTotalEnvironments] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([fetchExperiments(), fetchEnvironments()])
-      .then(([exps, envs]) => {
-        setExperiments(exps);
-        setEnvironments(envs);
+    Promise.all([
+      fetchExperiments({ page: 1, pageSize: 5 }),
+      fetchEnvironments({ page: 1, pageSize: 1 }),
+    ])
+      .then(([expsRes, envsRes]) => {
+        setExperiments(expsRes.data);
+        setTotalExperiments(expsRes.pagination.total);
+        setTotalEnvironments(envsRes.pagination.total);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -35,10 +40,10 @@ export default function OverviewPage() {
   );
 
   const stats = [
-    { label: "Total experiments", value: experiments.length },
+    { label: "Total experiments", value: totalExperiments },
     { label: "Running", value: statusCounts.RUNNING || 0 },
     { label: "Draft", value: statusCounts.DRAFT || 0 },
-    { label: "Environments", value: environments.length },
+    { label: "Environments", value: totalEnvironments },
   ];
 
   const columns: Column<Experiment>[] = [
@@ -111,7 +116,7 @@ export default function OverviewPage() {
       </div>
       <DataTable
         columns={columns}
-        data={experiments.slice(0, 5)}
+        data={experiments}
         rowKey={(exp) => exp.id}
         emptyMessage={
           <>

@@ -19,7 +19,50 @@ const experimentStatusSchema = z.enum([
   "ARCHIVED",
 ]);
 
+// --- Pagination ---
+
+const coercedInt = z.coerce.number().int();
+
+export const paginationSchema = z
+  .object({
+    page: coercedInt.min(1).optional(),
+    pageSize: coercedInt.min(1).max(100).optional(),
+  })
+  .refine(
+    (val) =>
+      (val.page === undefined && val.pageSize === undefined) ||
+      (val.page !== undefined && val.pageSize !== undefined),
+    { message: "page and pageSize must be provided together" },
+  )
+  .transform((val) => ({
+    page: val.page ?? 1,
+    pageSize: val.pageSize ?? 20,
+  }));
+
+export type PaginationParams = z.infer<typeof paginationSchema>;
+
 // --- Experiment Service API ---
+
+export const listExperimentsSchema = z
+  .object({
+    environmentId: z.string().min(1).optional(),
+    status: experimentStatusSchema.optional(),
+    page: coercedInt.min(1).optional(),
+    pageSize: coercedInt.min(1).max(100).optional(),
+  })
+  .refine(
+    (val) =>
+      (val.page === undefined && val.pageSize === undefined) ||
+      (val.page !== undefined && val.pageSize !== undefined),
+    { message: "page and pageSize must be provided together" },
+  )
+  .transform((val) => ({
+    ...val,
+    page: val.page ?? 1,
+    pageSize: val.pageSize ?? 20,
+  }));
+
+export type ListExperimentsQuery = z.infer<typeof listExperimentsSchema>;
 
 export const createExperimentSchema = z.object({
   key: z.string().min(1),
@@ -66,6 +109,10 @@ export const setAllocationsSchema = z.object({
 });
 
 export type SetAllocationsRequest = z.infer<typeof setAllocationsSchema>;
+
+export const listEnvironmentsSchema = paginationSchema;
+
+export type ListEnvironmentsQuery = z.infer<typeof listEnvironmentsSchema>;
 
 export const createEnvironmentSchema = z.object({
   name: z.string().min(1),
