@@ -21,6 +21,8 @@ export async function decideRoutes(
 
     const { user_key, env } = parsed.data;
 
+    await configStore.ensureEnvironment(env);
+
     const config = configStore.getConfig(env);
 
     if (!config) {

@@ -16,8 +16,23 @@ export class ConfigStore {
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private environments: Set<string>;
 
-  constructor(environments: string[]) {
+  constructor(environments: string[] = []) {
     this.environments = new Set(environments);
+  }
+
+  listTrackedEnvironments(): string[] {
+    return [...this.environments];
+  }
+
+  async ensureEnvironment(environment: string): Promise<void> {
+    if (!this.environments.has(environment)) {
+      this.environments.add(environment);
+    }
+
+    const hasConfig = this.configs.has(environment);
+    if (!hasConfig) {
+      await this.loadConfig(environment);
+    }
   }
 
   async start(): Promise<void> {

@@ -2,10 +2,8 @@ import Fastify from "fastify";
 import { ConfigStore } from "./services/config-store.js";
 import { decideRoutes } from "./routes/decide.js";
 
-const DEFAULT_ENVIRONMENTS = ["dev", "staging", "prod"];
-
 export function buildServer(environments?: string[]) {
-  const envs = environments ?? DEFAULT_ENVIRONMENTS;
+  const envs = environments ?? [];
   const configStore = new ConfigStore(envs);
 
   const app = Fastify({
@@ -14,7 +12,7 @@ export function buildServer(environments?: string[]) {
 
   app.get("/health", async () => {
     const configs: Record<string, number | null> = {};
-    for (const env of envs) {
+    for (const env of configStore.listTrackedEnvironments()) {
       const config = configStore.getConfig(env);
       configs[env] = config?.version ?? null;
     }

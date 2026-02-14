@@ -14,7 +14,9 @@ The decision plane for the experimentation platform. Provides low-latency, deter
 
 ### Config Loading
 
-On startup, the service attempts to load the latest config snapshot for each environment from S3. It then polls S3 every 5 seconds using a lightweight version check (`version.json`), only fetching the full snapshot when the version changes.
+On startup, the service starts with an empty environment set and polls S3 every 5 seconds using a lightweight version check (`version.json`), only fetching the full snapshot when the version changes.
+
+The service also discovers environments on demand: when a request arrives for an unseen `env`, it starts tracking that environment and attempts to load its snapshot immediately.
 
 When a new config is discovered, the service swaps the in-memory reference atomically — no locks, no read-during-write issues.
 

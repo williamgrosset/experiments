@@ -34,11 +34,10 @@ import {
 } from "./helpers/api.js";
 
 /**
- * The decision-service is started with default environments: ["dev", "staging", "prod"].
- * Its ConfigStore only monitors those environment names. We must use one of them
- * so the decision-service actually picks up the published config via S3 polling.
+ * We use a stable environment name in integration tests to keep the
+ * setup deterministic and easy to inspect across runs.
  */
-const ENV_NAME = "dev";
+const ENV_NAME = "test";
 
 /** Unique suffix to avoid collisions with previous test runs */
 const RUN_ID = Date.now().toString(36);
