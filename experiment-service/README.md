@@ -1,13 +1,13 @@
 # Experiment Service
 
-The control plane for the experimentation platform. Manages experiments, variants, allocations, and targeting rules. Writes to Postgres as the source of truth and publishes compiled config snapshots to Redis for the decision service.
+The control plane for the experimentation platform. Manages experiments, variants, allocations, and targeting rules. Writes to Postgres as the source of truth and publishes compiled config snapshots to S3 (MinIO locally) for the decision service.
 
 ## Responsibilities
 
 - CRUD operations for environments and experiments
 - Variant and allocation management
 - Experiment lifecycle (DRAFT -> RUNNING -> PAUSED -> ARCHIVED)
-- Config compilation and publishing to Redis
+- Config compilation and publishing to S3
 
 ## Data Model
 
@@ -44,7 +44,7 @@ DRAFT ──► RUNNING ──► PAUSED
 | `PATCH` | `/experiments/:id/status` | Transition experiment status |
 | `POST` | `/experiments/:id/variants` | Add a variant to an experiment |
 | `PUT` | `/experiments/:experimentId/allocations` | Replace allocation ranges |
-| `POST` | `/experiments/:id/publish` | Compile and publish config snapshot to Redis |
+| `POST` | `/experiments/:id/publish` | Compile and publish config snapshot to S3 |
 | `GET` | `/health` | Health check |
 
 ### Pagination
@@ -85,18 +85,20 @@ When you call `POST /experiments/:id/publish`:
 
 1. Loads all `RUNNING` experiments for the experiment's environment
 2. Compiles them into a `ConfigSnapshot` with pre-indexed experiments, variants, and allocations
-3. Writes the snapshot to Redis (`env:{name}:config`)
+3. Writes three objects to S3 in parallel:
+   - `configs/{env}/snapshots/{version}.json` — immutable versioned snapshot
+   - `configs/{env}/snapshots/latest.json` — the current snapshot
+   - `configs/{env}/version.json` — lightweight version index for polling
 4. Stores a `ConfigVersion` record in Postgres for audit
-5. Publishes a notification on the `config:updates` Redis Pub/Sub channel
 
 ## Running
 
 ### Prerequisites
 
-Postgres and Redis must be running. From the repo root:
+Postgres and MinIO must be running. From the repo root:
 
 ```bash
-docker compose up postgres redis -d
+docker compose up -d
 ```
 
 ### Setup
@@ -131,5 +133,9 @@ pnpm --filter experiment-service run build
 | Variable | Default | Description |
 |---|---|---|
 | `DATABASE_URL` | — | Postgres connection string |
-| `REDIS_URL` | `redis://localhost:6379` | Redis connection string |
+| `S3_ENDPOINT` | `http://localhost:9000` | S3-compatible endpoint (MinIO locally) |
+| `S3_BUCKET` | `experiment-configs` | S3 bucket for config snapshots |
+| `S3_ACCESS_KEY` | `minioadmin` | S3 access key |
+| `S3_SECRET_KEY` | `minioadmin` | S3 secret key |
+| `S3_REGION` | `us-east-1` | S3 region |
 | `EXPERIMENT_SERVICE_PORT` | `3001` | HTTP port |

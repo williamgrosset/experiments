@@ -6,8 +6,8 @@ An experimentation platform for managing feature flags and A/B tests with determ
 
 The platform is split into two planes:
 
-- **Control Plane** (`experiment-service`) — CRUD operations for experiments, variants, allocations, and targeting rules. Writes to Postgres and publishes compiled config snapshots to Redis.
-- **Decision Plane** (`decision-service`) — Stateless, low-latency variant assignment. Reads config from an in-memory cache populated via Redis Pub/Sub.
+- **Control Plane** (`experiment-service`) — CRUD operations for experiments, variants, allocations, and targeting rules. Writes to Postgres and publishes compiled config snapshots to S3 (MinIO locally).
+- **Decision Plane** (`decision-service`) — Stateless, low-latency variant assignment. Reads config from an in-memory cache populated by polling S3.
 - **API Gateway** (`api-gateway`) — Thin reverse proxy that routes external traffic to the appropriate service.
 - **Dashboard** (`dashboard`) — Web UI for creating environments, managing experiments, and publishing configs.
 
@@ -18,8 +18,8 @@ The platform is split into two planes:
 - **TypeScript** with strict mode, ESM, NodeNext resolution
 - **Fastify** for HTTP servers
 - **Prisma** for database access (experiment-service only)
-- **Redis** (ioredis) for config distribution and Pub/Sub
-- **Docker Compose** for local infrastructure (Postgres, Redis)
+- **S3** (MinIO locally) for config snapshot storage and distribution
+- **Docker Compose** for local infrastructure (Postgres, MinIO)
 - **pnpm workspaces** for monorepo management
 
 ## Prerequisites
@@ -39,7 +39,7 @@ pnpm install
 ### 2. Start infrastructure
 
 ```bash
-docker compose up postgres redis -d
+docker compose up -d
 ```
 
 ### 3. Set up the database
@@ -148,7 +148,7 @@ curl -s -X PATCH http://localhost:3000/api/experiments/EXP_ID/status \
 
 ### Step 6: Publish the config
 
-This compiles all running experiments in the environment into a config snapshot and writes it to Redis:
+This compiles all running experiments in the environment into a config snapshot and writes it to S3:
 
 ```bash
 curl -s -X POST http://localhost:3000/api/experiments/EXP_ID/publish | jq
@@ -230,11 +230,11 @@ curl -sG "http://localhost:3000/api/decide" \
 experiments/
 ├── packages/shared/          # Shared types and hashing utility
 ├── dashboard/                # Next.js UI for managing environments and experiments
-├── experiment-service/       # Control plane (Prisma + Postgres + Redis)
-├── decision-service/         # Decision plane (in-memory config + Redis Pub/Sub)
+├── experiment-service/       # Control plane (Prisma + Postgres + S3)
+├── decision-service/         # Decision plane (in-memory config + S3 polling)
 ├── api-gateway/              # Reverse proxy
 ├── integration-tests/        # End-to-end and cross-service integration tests
-└── docker-compose.yml        # Local infrastructure (Postgres, Redis)
+└── docker-compose.yml        # Local infrastructure (Postgres, MinIO)
 ```
 
 See each service's README for more detail.
