@@ -22,13 +22,23 @@ The platform is split into two planes:
 - **Docker Compose** for local infrastructure (Postgres, MinIO)
 - **pnpm workspaces** for monorepo management
 
-## Prerequisites
+## Todo
+
+- [ ] User auth
+- [ ] Rate limiting on /api/decide
+- [ ] Observability & metrics
+- [ ] Audience builder
+- [ ] Archive experiment clean-up
+- [ ] React SDK
+- [ ] LLM-assisted workflow
+
+## Getting Started
+
+### Prerequisites
 
 - Node.js >= 20
 - pnpm
 - Docker and Docker Compose
-
-## Getting Started
 
 ### 1. Install dependencies
 
