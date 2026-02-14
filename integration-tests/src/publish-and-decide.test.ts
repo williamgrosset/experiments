@@ -42,6 +42,8 @@ const ENV_NAME = "test";
 /** Unique suffix to avoid collisions with previous test runs */
 const RUN_ID = Date.now().toString(36);
 const EXPERIMENT_KEY = `test-exp-${RUN_ID}`;
+const EXPERIMENT_NAME = `Integration Test Experiment ${RUN_ID}`;
+const EXPERIMENT_DESCRIPTION = "Created by integration test suite";
 
 /** IDs populated during setup, used for teardown */
 let environmentId: string;
@@ -69,20 +71,23 @@ describe("End-to-end: config publish and decide", () => {
   it("should create an environment", async () => {
     const res = await createEnvironment(ENV_NAME);
 
-    // Environment may already exist from a previous run — both 201 and 500
-    // (unique constraint from Prisma) are acceptable. If it already exists,
-    // fetch the existing one.
+    // Environment may already exist from a previous run.
+    // Accept only the known duplicate statuses and then fetch the existing one.
     if (res.status === 201) {
       environmentId = res.data.id;
       expect(res.data.name).toBe(ENV_NAME);
     } else {
+      expect([409, 500]).toContain(res.status);
+
       // Environment already exists — look it up via the list endpoint
       const listRes = await fetch("http://localhost:3001/environments");
+      expect(listRes.ok).toBe(true);
       const body = (await listRes.json()) as {
         data: Array<{ id: string; name: string }>;
       };
       const existing = body.data.find((e) => e.name === ENV_NAME);
       expect(existing).toBeDefined();
+      expect(existing!.id).toBeTruthy();
       environmentId = existing!.id;
     }
 
@@ -95,13 +100,17 @@ describe("End-to-end: config publish and decide", () => {
   it("should create an experiment in the environment", async () => {
     const res = await createExperiment({
       key: EXPERIMENT_KEY,
-      name: `Integration Test Experiment ${RUN_ID}`,
-      description: "Created by integration test suite",
+      name: EXPERIMENT_NAME,
+      description: EXPERIMENT_DESCRIPTION,
       environmentId,
     });
 
     expect(res.status).toBe(201);
+    expect(res.data.id).toBeTruthy();
     expect(res.data.key).toBe(EXPERIMENT_KEY);
+    expect(res.data.name).toBe(EXPERIMENT_NAME);
+    expect(res.data.description).toBe(EXPERIMENT_DESCRIPTION);
+    expect(res.data.salt).toBeTruthy();
     expect(res.data.status).toBe("DRAFT");
     expect(res.data.environmentId).toBe(environmentId);
 
@@ -121,6 +130,7 @@ describe("End-to-end: config publish and decide", () => {
 
     expect(res.status).toBe(201);
     expect(res.data.key).toBe("control");
+    expect(res.data.payload).toEqual({ color: "blue" });
     controlVariantId = res.data.id;
   });
 
@@ -133,6 +143,7 @@ describe("End-to-end: config publish and decide", () => {
 
     expect(res.status).toBe(201);
     expect(res.data.key).toBe("treatment");
+    expect(res.data.payload).toEqual({ color: "green" });
     treatmentVariantId = res.data.id;
   });
 
@@ -147,6 +158,20 @@ describe("End-to-end: config publish and decide", () => {
 
     expect(res.status).toBe(200);
     expect(res.data).toHaveLength(2);
+    expect(res.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          variantId: controlVariantId,
+          rangeStart: 0,
+          rangeEnd: 4999,
+        }),
+        expect.objectContaining({
+          variantId: treatmentVariantId,
+          rangeStart: 5000,
+          rangeEnd: 9999,
+        }),
+      ])
+    );
   });
 
   // --------------------------------------------------------------------------
@@ -156,6 +181,10 @@ describe("End-to-end: config publish and decide", () => {
     const res = await updateExperimentStatus(experimentId, "RUNNING");
 
     expect(res.status).toBe(200);
+    expect(res.data.id).toBe(experimentId);
+    expect(res.data.key).toBe(EXPERIMENT_KEY);
+    expect(res.data.environmentId).toBe(environmentId);
+    expect(res.data.salt).toBe(experimentSalt);
     expect(res.data.status).toBe("RUNNING");
   });
 
@@ -176,6 +205,34 @@ describe("End-to-end: config publish and decide", () => {
     expect(exp!.variants).toHaveLength(2);
     expect(exp!.allocations).toHaveLength(2);
     expect(exp!.salt).toBe(experimentSalt);
+    expect(exp!.variants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: controlVariantId,
+          key: "control",
+          payload: { color: "blue" },
+        }),
+        expect.objectContaining({
+          id: treatmentVariantId,
+          key: "treatment",
+          payload: { color: "green" },
+        }),
+      ])
+    );
+    expect(exp!.allocations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          variantId: controlVariantId,
+          rangeStart: 0,
+          rangeEnd: 4999,
+        }),
+        expect.objectContaining({
+          variantId: treatmentVariantId,
+          rangeStart: 5000,
+          rangeEnd: 9999,
+        }),
+      ])
+    );
   });
 
   // --------------------------------------------------------------------------
@@ -215,11 +272,20 @@ describe("End-to-end: config publish and decide", () => {
       assignment!.variant_id
     );
 
-    // Payload should be present
+    // Payload and variant id should match the returned variant key
     expect(assignment!.payload).toBeDefined();
-    expect(["blue", "green"]).toContain(
-      (assignment!.payload as Record<string, unknown>).color
-    );
+    const color = (assignment!.payload as Record<string, unknown>).color;
+    if (assignment!.variant_key === "control") {
+      expect(assignment!.variant_id).toBe(controlVariantId);
+      expect(color).toBe("blue");
+    } else if (assignment!.variant_key === "treatment") {
+      expect(assignment!.variant_id).toBe(treatmentVariantId);
+      expect(color).toBe("green");
+    } else {
+      throw new Error(
+        `Unexpected variant_key in assignment: ${assignment!.variant_key}`
+      );
+    }
   });
 
   // --------------------------------------------------------------------------
@@ -234,17 +300,22 @@ describe("End-to-end: config publish and decide", () => {
       decide({ userKey, env: ENV_NAME }),
     ]);
 
-    const variants = results.map((r) => {
+    const assignments = results.map((r) => {
+      expect(r.status).toBe(200);
       const a = r.data.assignments.find(
         (a) => a.experiment_key === EXPERIMENT_KEY
       );
-      return a?.variant_key;
+      expect(a).toBeDefined();
+      return {
+        variantKey: a!.variant_key,
+        variantId: a!.variant_id,
+        color: (a!.payload as Record<string, unknown> | undefined)?.color,
+      };
     });
 
-    // All three calls should return the same variant
-    expect(variants[0]).toBeDefined();
-    expect(variants[0]).toBe(variants[1]);
-    expect(variants[0]).toBe(variants[2]);
+    // All three calls should return the same assignment details
+    expect(assignments[0]).toEqual(assignments[1]);
+    expect(assignments[0]).toEqual(assignments[2]);
   });
 
   // --------------------------------------------------------------------------
@@ -300,9 +371,15 @@ describe("End-to-end: config publish and decide", () => {
       expect(assignment).toBeDefined();
 
       if (assignment!.variant_key === "control") {
+        expect(assignment!.variant_id).toBe(controlVariantId);
         controlCount++;
       } else if (assignment!.variant_key === "treatment") {
+        expect(assignment!.variant_id).toBe(treatmentVariantId);
         treatmentCount++;
+      } else {
+        throw new Error(
+          `Unexpected variant_key in distribution test: ${assignment!.variant_key}`
+        );
       }
     }
 
