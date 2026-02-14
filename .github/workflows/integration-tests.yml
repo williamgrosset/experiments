@@ -26,19 +26,27 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      redis:
-        image: redis:7-alpine
+      minio:
+        image: minio/minio:latest
         ports:
-          - 6379:6379
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd "mc ready local"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
 
     env:
       DATABASE_URL: postgresql://experiments:experiments@localhost:5432/experiments
-      REDIS_URL: redis://localhost:6379
+      S3_ENDPOINT: http://localhost:9000
+      S3_BUCKET: experiment-configs
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_REGION: us-east-1
+      CONFIG_BASE_URL: http://localhost:9000/experiment-configs
 
     steps:
       - name: Checkout
@@ -57,6 +65,14 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Create MinIO bucket
+        run: |
+          curl -sS https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+          chmod +x /usr/local/bin/mc
+          mc alias set local http://localhost:9000 minioadmin minioadmin
+          mc mb --ignore-existing local/experiment-configs
+          mc anonymous set download local/experiment-configs
 
       - name: Build shared package
         run: pnpm --filter @experiments/shared run build
