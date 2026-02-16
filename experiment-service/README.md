@@ -30,6 +30,27 @@ DRAFT ──► RUNNING ──► PAUSED
   └──────────┴───────► ARCHIVED
 ```
 
+### Targeting Rules
+
+Targeting rules are stored on each experiment as an array of rules. Each rule has a `conditions` array:
+
+```json
+[
+  {
+    "conditions": [
+      { "attribute": "country", "operator": "eq", "value": "US" },
+      { "attribute": "age", "operator": "gt", "value": 18 }
+    ]
+  }
+]
+```
+
+- Rules are ORed together (any matching rule makes the user eligible)
+- Conditions inside a rule are ANDed together (all conditions must match)
+- If `targetingRules` is empty or omitted, the experiment targets everyone
+
+Supported operators: `eq`, `neq`, `in`, `notIn`, `contains`, `gt`, `lt`.
+
 ## API Routes
 
 | Method | Path | Description |

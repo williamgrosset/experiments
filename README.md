@@ -1,5 +1,8 @@
 # Experiments
 
+[![Docker Image Builds](https://github.com/williamgrosset/experiments/actions/workflows/docker-image-builds.yml/badge.svg)](https://github.com/williamgrosset/experiments/actions/workflows/docker-image-builds.yml)
+[![Integration Tests](https://github.com/williamgrosset/experiments/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/williamgrosset/experiments/actions/workflows/integration-tests.yml)
+
 An experimentation platform for managing feature flags and A/B tests with deterministic, low-latency variant assignment.
 
 ## Demo
@@ -26,15 +29,16 @@ The platform is split into two planes:
 - **Docker Compose** for local infrastructure (Postgres, MinIO)
 - **pnpm workspaces** for monorepo management
 
-## Todo
+See each service's README for more detail.
 
-- [ ] User auth
-- [ ] Rate limiting on /api/decide
-- [ ] Observability & metrics
-- [ ] Audience builder
-- [ ] Archive experiment clean-up
-- [ ] React SDK
-- [ ] LLM-assisted workflow
+## Gateway Routing
+
+| Gateway path | Upstream |
+|---|---|
+| `/api/environments/*` | `experiment-service:3001/environments/*` |
+| `/api/experiments/*` | `experiment-service:3001/experiments/*` |
+| `/api/decide*` | `decision-service:3002/decide*` |
+| `/health` | Aggregated health from both services |
 
 ## Getting Started
 
@@ -237,15 +241,6 @@ curl -sG "http://localhost:3000/api/decide" \
   | jq
 ```
 
-## Gateway Routing
-
-| Gateway path | Upstream |
-|---|---|
-| `/api/experiments/*` | `experiment-service:3001/experiments/*` |
-| `/api/environments/*` | `experiment-service:3001/environments/*` |
-| `/api/decide*` | `decision-service:3002/decide*` |
-| `/health` | Aggregated health from both services |
-
 ## Project Structure
 
 ```
@@ -259,4 +254,13 @@ experiments/
 └── docker-compose.yml        # Local infrastructure (Postgres, MinIO)
 ```
 
-See each service's README for more detail.
+## Todo
+
+- [ ] User auth
+- [ ] Rate limiting on /api/decide
+- [ ] Observability & metrics
+- [ ] Audience builder
+- [ ] Event ingestion & conversion attribution
+- [ ] Archive experiment clean-up
+- [ ] React SDK
+- [ ] LLM-assisted workflow
