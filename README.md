@@ -1,6 +1,7 @@
 # Experiments
 
 [![Docker Image Builds](https://github.com/williamgrosset/experiments/actions/workflows/docker-image-builds.yml/badge.svg)](https://github.com/williamgrosset/experiments/actions/workflows/docker-image-builds.yml)
+[![Unit Tests](https://github.com/williamgrosset/experiments/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/williamgrosset/experiments/actions/workflows/unit-tests.yml)
 [![Integration Tests](https://github.com/williamgrosset/experiments/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/williamgrosset/experiments/actions/workflows/integration-tests.yml)
 
 An experimentation platform for managing feature flags and A/B tests with deterministic, low-latency variant assignment.
@@ -93,6 +94,30 @@ After startup:
 
 - API Gateway: `http://localhost:3000`
 - Dashboard UI: `http://localhost:3100`
+
+## Running Tests
+
+### Unit tests
+
+Run all unit tests across workspace packages:
+
+```bash
+pnpm test:unit
+```
+
+### Integration tests
+
+Run end-to-end integration tests:
+
+```bash
+pnpm test:integration
+```
+
+Integration test prerequisites:
+
+- Postgres and MinIO running (`docker compose up`)
+- `experiment-service` running on `:3001`
+- `decision-service` running on `:3002`
 
 ## Running the Flows
 

@@ -9,6 +9,7 @@
     "dev:gateway": "pnpm --filter api-gateway run dev",
     "dev:dashboard": "pnpm --filter dashboard run dev",
     "lint": "pnpm -r run lint",
+    "test:unit": "pnpm -r --filter \"!integration-tests\" run --if-present test",
     "test:integration": "pnpm --filter integration-tests run test"
   },
   "engines": {
