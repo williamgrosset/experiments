@@ -29,6 +29,7 @@ function createDbExperiment(
     salt: "salt-1",
     status: "RUNNING",
     environmentId: "env-1",
+    audience: null,
     targetingRules: [],
     variants: [
       { id: "var-control", key: "control", payload: { color: "blue" } },
@@ -137,6 +138,7 @@ describe("ConfigPublisher", () => {
       id: "exp-1",
       key: "checkout-flow",
       salt: "salt-1",
+      audienceRules: [],
       targetingRules,
       variants: [
         { id: "var-control", key: "control", payload: { color: "blue" } },
@@ -157,6 +159,39 @@ describe("ConfigPublisher", () => {
     const snapshot = await publisher.publish("env-1");
 
     expect(snapshot.experiments[0]!.targetingRules).toEqual([]);
+  });
+
+  it("defaults audience rules to an empty array when audience is null", async () => {
+    setupMocks({ experiments: [createDbExperiment({ audience: null })] });
+
+    const snapshot = await publisher.publish("env-1");
+
+    expect(snapshot.experiments[0]!.audienceRules).toEqual([]);
+  });
+
+  it("includes audience rules when an audience is linked", async () => {
+    const audienceRules = [
+      {
+        conditions: [{ attribute: "country", operator: "eq", value: "US" }],
+      },
+    ];
+
+    setupMocks({
+      experiments: [
+        createDbExperiment({
+          audience: {
+            id: "aud-1",
+            name: "US Audience",
+            environmentId: "env-1",
+            rules: audienceRules,
+          },
+        }),
+      ],
+    });
+
+    const snapshot = await publisher.publish("env-1");
+
+    expect(snapshot.experiments[0]!.audienceRules).toEqual(audienceRules);
   });
 
   it("writes versioned, latest, and version index objects to S3", async () => {
@@ -205,6 +240,7 @@ describe("ConfigPublisher", () => {
         status: "RUNNING",
       },
       include: {
+        audience: true,
         variants: true,
         allocations: true,
       },

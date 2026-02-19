@@ -18,7 +18,7 @@ export async function experimentRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: parsed.error.issues[0].message });
     }
 
-    const { key, name, description, environmentId, targetingRules } =
+    const { key, name, description, environmentId, audienceId, targetingRules } =
       parsed.data;
 
     try {
@@ -27,6 +27,7 @@ export async function experimentRoutes(app: FastifyInstance) {
         name,
         description,
         environmentId,
+        audienceId,
         targetingRules: targetingRules as unknown as Prisma.InputJsonValue,
       });
       return reply.status(201).send(experiment);
@@ -36,6 +37,12 @@ export async function experimentRoutes(app: FastifyInstance) {
         return reply.status(409).send({
           error: `Experiment with key "${key}" already exists in this environment`,
         });
+      }
+      if (message.includes("Audience not found")) {
+        return reply.status(404).send({ error: message });
+      }
+      if (message.includes("Audience must belong")) {
+        return reply.status(422).send({ error: message });
       }
       throw err;
     }
@@ -73,7 +80,7 @@ export async function experimentRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: parsed.error.issues[0].message });
     }
 
-    const { name, description, targetingRules } = parsed.data;
+    const { name, description, audienceId, targetingRules } = parsed.data;
 
     const metadata = {
       attempted: false,
@@ -85,11 +92,13 @@ export async function experimentRoutes(app: FastifyInstance) {
       const experiment = await experimentService.update(request.params.id, {
         name,
         description,
+        audienceId,
         targetingRules: targetingRules as unknown as Prisma.InputJsonValue,
       });
 
       const shouldPublish =
-        targetingRules !== undefined && experiment.status === "RUNNING";
+        (targetingRules !== undefined || audienceId !== undefined) &&
+        experiment.status === "RUNNING";
 
       if (shouldPublish) {
         metadata.attempted = true;
@@ -107,6 +116,15 @@ export async function experimentRoutes(app: FastifyInstance) {
       const message = err instanceof Error ? err.message : "Unknown error";
       if (message.includes("Record to update not found")) {
         return reply.status(404).send({ error: "Experiment not found" });
+      }
+      if (message.includes("Experiment not found")) {
+        return reply.status(404).send({ error: message });
+      }
+      if (message.includes("Audience not found")) {
+        return reply.status(404).send({ error: message });
+      }
+      if (message.includes("Audience must belong")) {
+        return reply.status(422).send({ error: message });
       }
       throw err;
     }

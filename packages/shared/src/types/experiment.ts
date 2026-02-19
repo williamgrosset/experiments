@@ -40,6 +40,16 @@ export interface Environment {
   updatedAt: string;
 }
 
+export interface Audience {
+  id: string;
+  name: string;
+  environmentId: string;
+  environment?: Environment;
+  rules: TargetingRule[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Experiment {
   id: string;
   key: string;
@@ -49,6 +59,8 @@ export interface Experiment {
   status: ExperimentStatus;
   environmentId: string;
   environment?: Environment;
+  audienceId?: string | null;
+  audience?: Audience | null;
   variants: Variant[];
   allocations: Allocation[];
   targetingRules: TargetingRule[];
@@ -67,6 +79,7 @@ export interface ConfigExperiment {
   id: string;
   key: string;
   salt: string;
+  audienceRules: TargetingRule[];
   targetingRules: TargetingRule[];
   variants: Pick<Variant, "id" | "key" | "payload">[];
   allocations: Pick<Allocation, "variantId" | "rangeStart" | "rangeEnd">[];

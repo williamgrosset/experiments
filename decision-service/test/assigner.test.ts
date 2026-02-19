@@ -10,6 +10,7 @@ function createExperiment(
     id: "exp-1",
     key: "checkout-flow",
     salt: "salt-1",
+    audienceRules: [],
     targetingRules: [],
     variants: [
       { id: "var-control", key: "control", payload: { color: "blue" } },
@@ -60,6 +61,27 @@ describe("assignVariants", () => {
     const result = assignVariants([experiment], "user-1", { country: "CA" });
 
     expect(result).toEqual([]);
+  });
+
+  it("requires both audience and experiment targeting rules to match", () => {
+    const experiment = createExperiment({
+      audienceRules: rule([
+        { attribute: "country", operator: "eq", value: "US" },
+      ]),
+      targetingRules: rule([{ attribute: "plan", operator: "eq", value: "pro" }]),
+    });
+
+    const audienceOnly = assignVariants([experiment], "user-1", {
+      country: "US",
+      plan: "free",
+    });
+    expect(audienceOnly).toEqual([]);
+
+    const bothMatch = assignVariants([experiment], "user-1", {
+      country: "US",
+      plan: "pro",
+    });
+    expect(bothMatch).toHaveLength(1);
   });
 
   it("skips experiments when bucket falls outside all allocation ranges", () => {

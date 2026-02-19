@@ -57,18 +57,27 @@ export default function RootLayout({
                 </svg>
                 Overview
               </NavLink>
-              <NavLink href="/experiments">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 3h6M12 3v6m0 0l5.2 8.8a2 2 0 01-1.72 3.2H8.52a2 2 0 01-1.72-3.2L12 9z" />
-                </svg>
-                Experiments
-              </NavLink>
               <NavLink href="/environments">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="3" />
                   <path d="M12 1v4m0 14v4m-8.66-5.66l2.83-2.83m11.31-5.66l2.83-2.83M1 12h4m14 0h4m-5.66 8.66l-2.83-2.83M8.17 8.17L5.34 5.34" />
                 </svg>
                 Environments
+              </NavLink>
+              <NavLink href="/experiments">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 3h6M12 3v6m0 0l5.2 8.8a2 2 0 01-1.72 3.2H8.52a2 2 0 01-1.72-3.2L12 9z" />
+                </svg>
+                Experiments
+              </NavLink>
+              <NavLink href="/audiences">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="8" cy="8" r="3" />
+                  <circle cx="16" cy="8" r="3" />
+                  <path d="M3 19a5 5 0 0 1 10 0" />
+                  <path d="M11 19a5 5 0 0 1 10 0" />
+                </svg>
+                Audiences
               </NavLink>
             </nav>
             <div className="mt-auto border-t border-zinc-200 px-5 py-3">

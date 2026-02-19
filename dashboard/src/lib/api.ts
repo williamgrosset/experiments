@@ -1,5 +1,6 @@
 import type {
   Environment,
+  Audience,
   Experiment,
   ExperimentStatus,
   Variant,
@@ -83,6 +84,7 @@ export function createExperiment(data: {
   name: string;
   description?: string;
   environmentId: string;
+  audienceId?: string;
   targetingRules?: TargetingRule[];
 }): Promise<Experiment> {
   return request<Experiment>("/experiments", {
@@ -93,7 +95,12 @@ export function createExperiment(data: {
 
 export function updateExperiment(
   id: string,
-  data: { name?: string; description?: string; targetingRules?: TargetingRule[] },
+  data: {
+    name?: string;
+    description?: string;
+    audienceId?: string | null;
+    targetingRules?: TargetingRule[];
+  },
 ): Promise<Experiment> {
   return request<Experiment>(`/experiments/${id}`, {
     method: "PATCH",
@@ -141,4 +148,46 @@ export function setAllocations(
     method: "PUT",
     body: JSON.stringify({ allocations }),
   });
+}
+
+// --- Audiences ---
+
+export function fetchAudiences(params?: {
+  environmentId?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedResponse<Audience>> {
+  const query = new URLSearchParams();
+  if (params?.environmentId) query.set("environmentId", params.environmentId);
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+  const qs = query.toString();
+  return request<PaginatedResponse<Audience>>(
+    `/audiences${qs ? `?${qs}` : ""}`,
+  );
+}
+
+export function createAudience(data: {
+  name: string;
+  environmentId: string;
+  rules: TargetingRule[];
+}): Promise<Audience> {
+  return request<Audience>("/audiences", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateAudience(
+  id: string,
+  data: { name?: string; rules?: TargetingRule[] },
+): Promise<Audience> {
+  return request<Audience>(`/audiences/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteAudience(id: string): Promise<Audience> {
+  return request<Audience>(`/audiences/${id}`, { method: "DELETE" });
 }

@@ -18,8 +18,20 @@ export function assignVariants(
   const assignments: Assignment[] = [];
 
   for (const experiment of experiments) {
-    // Check targeting rules
-    if (!evaluateTargetingRules(experiment.targetingRules, context)) {
+    // Check audience and targeting rules (AND semantics)
+    const audienceEligible = evaluateTargetingRules(
+      experiment.audienceRules,
+      context
+    );
+    if (!audienceEligible) {
+      continue;
+    }
+
+    const experimentEligible = evaluateTargetingRules(
+      experiment.targetingRules,
+      context
+    );
+    if (!experimentEligible) {
       continue;
     }
 

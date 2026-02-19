@@ -69,6 +69,7 @@ export const createExperimentSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   environmentId: z.string().min(1),
+  audienceId: z.string().min(1).optional(),
   targetingRules: z.array(targetingRuleSchema).optional(),
 });
 
@@ -77,6 +78,7 @@ export type CreateExperimentRequest = z.infer<typeof createExperimentSchema>;
 export const updateExperimentSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
+  audienceId: z.string().min(1).nullable().optional(),
   targetingRules: z.array(targetingRuleSchema).optional(),
 });
 
@@ -109,6 +111,41 @@ export const setAllocationsSchema = z.object({
 });
 
 export type SetAllocationsRequest = z.infer<typeof setAllocationsSchema>;
+
+export const listAudiencesSchema = z
+  .object({
+    environmentId: z.string().min(1).optional(),
+    page: coercedInt.min(1).optional(),
+    pageSize: coercedInt.min(1).max(100).optional(),
+  })
+  .refine(
+    (val) =>
+      (val.page === undefined && val.pageSize === undefined) ||
+      (val.page !== undefined && val.pageSize !== undefined),
+    { message: "page and pageSize must be provided together" },
+  )
+  .transform((val) => ({
+    ...val,
+    page: val.page ?? 1,
+    pageSize: val.pageSize ?? 20,
+  }));
+
+export type ListAudiencesQuery = z.infer<typeof listAudiencesSchema>;
+
+export const createAudienceSchema = z.object({
+  name: z.string().min(1),
+  environmentId: z.string().min(1),
+  rules: z.array(targetingRuleSchema),
+});
+
+export type CreateAudienceRequest = z.infer<typeof createAudienceSchema>;
+
+export const updateAudienceSchema = z.object({
+  name: z.string().min(1).optional(),
+  rules: z.array(targetingRuleSchema).optional(),
+});
+
+export type UpdateAudienceRequest = z.infer<typeof updateAudienceSchema>;
 
 export const listEnvironmentsSchema = paginationSchema;
 
