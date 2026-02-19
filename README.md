@@ -280,7 +280,7 @@ experiments/
 ## Todo
 
 - [ ] User auth
-- [ ] Rate limiting on /api/decide
+- [x] Rate limiting on /api/decide
 - [ ] Observability & metrics
 - [ ] Audience builder
 - [ ] Event ingestion & conversion attribution

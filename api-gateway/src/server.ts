@@ -1,5 +1,7 @@
 import Fastify from "fastify";
-import proxy from "@fastify/http-proxy";
+import { registerControlPlaneRoutes } from "./routes/control-plane.js";
+import { registerDecideRoutes } from "./routes/decide.js";
+import { registerHealthRoute } from "./routes/health.js";
 
 const EXPERIMENT_SERVICE_URL =
   process.env.EXPERIMENT_SERVICE_URL || "http://localhost:3001";
@@ -11,50 +13,9 @@ export function buildServer() {
     logger: true,
   });
 
-  // Health check — pings both upstream services
-  app.get("/health", async (_request, reply) => {
-    const checks: Record<string, string> = {};
-
-    try {
-      const expRes = await fetch(`${EXPERIMENT_SERVICE_URL}/health`);
-      checks.experiment_service = expRes.ok ? "ok" : "unhealthy";
-    } catch {
-      checks.experiment_service = "unreachable";
-    }
-
-    try {
-      const decRes = await fetch(`${DECISION_SERVICE_URL}/health`);
-      checks.decision_service = decRes.ok ? "ok" : "unhealthy";
-    } catch {
-      checks.decision_service = "unreachable";
-    }
-
-    const healthy = Object.values(checks).every((s) => s === "ok");
-    return reply.status(healthy ? 200 : 503).send({
-      status: healthy ? "ok" : "degraded",
-      services: checks,
-    });
-  });
-
-  // Proxy /api/experiments/* and /api/environments/* → experiment-service
-  app.register(proxy, {
-    upstream: EXPERIMENT_SERVICE_URL,
-    prefix: "/api/experiments",
-    rewritePrefix: "/experiments",
-  });
-
-  app.register(proxy, {
-    upstream: EXPERIMENT_SERVICE_URL,
-    prefix: "/api/environments",
-    rewritePrefix: "/environments",
-  });
-
-  // Proxy /api/decide → decision-service
-  app.register(proxy, {
-    upstream: DECISION_SERVICE_URL,
-    prefix: "/api/decide",
-    rewritePrefix: "/decide",
-  });
+  registerHealthRoute(app, EXPERIMENT_SERVICE_URL, DECISION_SERVICE_URL);
+  registerControlPlaneRoutes(app, EXPERIMENT_SERVICE_URL);
+  registerDecideRoutes(app, DECISION_SERVICE_URL);
 
   return app;
 }

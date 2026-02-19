@@ -62,3 +62,7 @@ pnpm --filter api-gateway run build
 | `API_GATEWAY_PORT` | `3000` | HTTP port |
 | `EXPERIMENT_SERVICE_URL` | `http://localhost:3001` | Experiment service upstream URL |
 | `DECISION_SERVICE_URL` | `http://localhost:3002` | Decision service upstream URL |
+| `DECIDE_RATE_LIMIT_ENABLED` | `true` | Enable rate limiting for `/api/decide` |
+| `DECIDE_RATE_LIMIT_MAX` | `300` | Max requests per client IP per window for `/api/decide` |
+| `DECIDE_RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window duration in milliseconds |
+| `DECIDE_RATE_LIMIT_ALLOWLIST` | `` | Comma-separated client IPs excluded from `/api/decide` limits |
