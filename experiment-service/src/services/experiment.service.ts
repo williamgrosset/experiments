@@ -9,24 +9,53 @@ const VALID_TRANSITIONS: Record<ExperimentStatus, ExperimentStatus[]> = {
 };
 
 export class ExperimentService {
+  private async assertAudienceInEnvironment(
+    audienceId: string,
+    environmentId: string
+  ): Promise<void> {
+    const audience = await prisma.audience.findUnique({
+      where: { id: audienceId },
+      select: { id: true, environmentId: true },
+    });
+
+    if (!audience) {
+      throw new Error("Audience not found");
+    }
+
+    if (audience.environmentId !== environmentId) {
+      throw new Error("Audience must belong to the same environment");
+    }
+  }
+
   async create(data: {
     key: string;
     name: string;
     description?: string;
     environmentId: string;
+    audienceId?: string;
     targetingRules?: Prisma.InputJsonValue;
   }) {
+    if (data.audienceId) {
+      await this.assertAudienceInEnvironment(data.audienceId, data.environmentId);
+    }
+
     return prisma.experiment.create({
       data: {
         key: data.key,
         name: data.name,
         description: data.description,
         environmentId: data.environmentId,
+        audienceId: data.audienceId,
         ...(data.targetingRules !== undefined && {
           targetingRules: data.targetingRules,
         }),
       },
-      include: { variants: true, allocations: true, environment: true },
+      include: {
+        variants: true,
+        allocations: true,
+        environment: true,
+        audience: true,
+      },
     });
   }
 
@@ -49,7 +78,12 @@ export class ExperimentService {
     const [data, total] = await Promise.all([
       prisma.experiment.findMany({
         where,
-        include: { variants: true, allocations: true, environment: true },
+        include: {
+          variants: true,
+          allocations: true,
+          environment: true,
+          audience: true,
+        },
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
@@ -71,7 +105,12 @@ export class ExperimentService {
   async getById(id: string) {
     return prisma.experiment.findUnique({
       where: { id },
-      include: { variants: true, allocations: true, environment: true },
+      include: {
+        variants: true,
+        allocations: true,
+        environment: true,
+        audience: true,
+      },
     });
   }
 
@@ -80,13 +119,32 @@ export class ExperimentService {
     data: {
       name?: string;
       description?: string;
+      audienceId?: string | null;
       targetingRules?: Prisma.InputJsonValue;
     }
   ) {
+    if (data.audienceId !== undefined && data.audienceId !== null) {
+      const experiment = await prisma.experiment.findUnique({
+        where: { id },
+        select: { environmentId: true },
+      });
+
+      if (!experiment) {
+        throw new Error("Experiment not found");
+      }
+
+      await this.assertAudienceInEnvironment(data.audienceId, experiment.environmentId);
+    }
+
     return prisma.experiment.update({
       where: { id },
       data,
-      include: { variants: true, allocations: true, environment: true },
+      include: {
+        variants: true,
+        allocations: true,
+        environment: true,
+        audience: true,
+      },
     });
   }
 
@@ -106,7 +164,12 @@ export class ExperimentService {
     return prisma.experiment.update({
       where: { id },
       data: { status: newStatus },
-      include: { variants: true, allocations: true, environment: true },
+      include: {
+        variants: true,
+        allocations: true,
+        environment: true,
+        audience: true,
+      },
     });
   }
 

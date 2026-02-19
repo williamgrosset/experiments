@@ -28,6 +28,7 @@ export class ConfigPublisher {
         status: "RUNNING",
       },
       include: {
+        audience: true,
         variants: true,
         allocations: true,
       },
@@ -45,6 +46,8 @@ export class ConfigPublisher {
       id: exp.id,
       key: exp.key,
       salt: exp.salt,
+      audienceRules:
+        (exp.audience?.rules as unknown as TargetingRule[] | undefined) ?? [],
       targetingRules: (exp.targetingRules as unknown as TargetingRule[]) ?? [],
       variants: exp.variants.map((v) => ({
         id: v.id,

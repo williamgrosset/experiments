@@ -83,6 +83,7 @@ export interface ConfigSnapshot {
     id: string;
     key: string;
     salt: string;
+    audienceRules: unknown[];
     targetingRules: unknown[];
     variants: Array<{ id: string; key: string; payload?: Record<string, unknown> }>;
     allocations: Array<{ variantId: string; rangeStart: number; rangeEnd: number }>;

@@ -16,4 +16,10 @@ export function registerControlPlaneRoutes(
     prefix: "/api/environments",
     rewritePrefix: "/environments",
   });
+
+  app.register(proxy, {
+    upstream: experimentServiceUrl,
+    prefix: "/api/audiences",
+    rewritePrefix: "/audiences",
+  });
 }
