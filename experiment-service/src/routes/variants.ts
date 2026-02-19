@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { Prisma } from "@prisma/client";
 import { createVariantSchema } from "@experiments/shared";
 import { experimentService } from "../services/experiment.service.js";
+import { configPublisher } from "../services/config-publisher.js";
 
 export async function variantRoutes(app: FastifyInstance) {
   app.post<{
@@ -18,13 +19,14 @@ export async function variantRoutes(app: FastifyInstance) {
 
     const { key, name, payload } = parsed.data;
 
+    let variant: Awaited<ReturnType<typeof experimentService.addVariant>>;
+
     try {
-      const variant = await experimentService.addVariant(experimentId, {
+      variant = await experimentService.addVariant(experimentId, {
         key,
         name,
         payload: payload as unknown as Prisma.InputJsonValue,
       });
-      return reply.status(201).send(variant);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
       if (message.includes("Unique constraint")) {
@@ -37,5 +39,19 @@ export async function variantRoutes(app: FastifyInstance) {
       }
       throw err;
     }
+
+    const experiment = await experimentService.getById(experimentId);
+    if (experiment?.status === "RUNNING") {
+      try {
+        await configPublisher.publish(experiment.environmentId);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return reply.status(500).send({
+          error: `Variant added but failed to publish config: ${message}`,
+        });
+      }
+    }
+
+    return reply.status(201).send(variant);
   });
 }

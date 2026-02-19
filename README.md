@@ -197,9 +197,13 @@ curl -s -X PATCH http://localhost:3000/api/experiments/EXP_ID/status \
   -d '{"status": "RUNNING"}' | jq
 ```
 
-### Step 6: Publish the config
+This status transition auto-publishes the environment config.
 
-This compiles all running experiments in the environment into a config snapshot and writes it to S3:
+### Step 6: Publish the config (optional manual re-publish)
+
+When an experiment transitions to `RUNNING` or `PAUSED`, the control plane auto-publishes the environment config.
+
+You can still manually re-publish (for example, after out-of-band recovery) using:
 
 ```bash
 curl -s -X POST http://localhost:3000/api/experiments/EXP_ID/publish | jq
@@ -267,6 +271,18 @@ curl -sG "http://localhost:3000/api/decide" \
 ```
 
 ## Project Structure
+
+## Publish behavior
+
+`experiment-service` owns config publishing for live-assignment changes:
+
+- Status transitions (`PATCH /experiments/:id/status`) auto-publish
+- Variant creation (`POST /experiments/:id/variants`) auto-publishes when experiment is `RUNNING`
+- Allocation changes (`PUT /experiments/:id/allocations`) auto-publish when experiment is `RUNNING`
+- Targeting rule updates (`PATCH /experiments/:id` with `targetingRules`) auto-publish when experiment is `RUNNING`
+- Experiment deletion (`DELETE /experiments/:id`) auto-publishes
+
+`POST /experiments/:id/publish` remains available as an explicit manual re-publish endpoint.
 
 ```
 experiments/

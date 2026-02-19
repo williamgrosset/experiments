@@ -61,11 +61,11 @@ Supported operators: `eq`, `neq`, `in`, `notIn`, `contains`, `gt`, `lt`.
 | `POST` | `/experiments` | Create an experiment |
 | `GET` | `/experiments` | List experiments (paginated, filter by `environmentId`, `status`) |
 | `GET` | `/experiments/:id` | Get experiment with variants and allocations |
-| `PATCH` | `/experiments/:id` | Update name, description, or targeting rules |
-| `PATCH` | `/experiments/:id/status` | Transition experiment status |
-| `POST` | `/experiments/:id/variants` | Add a variant to an experiment |
-| `PUT` | `/experiments/:experimentId/allocations` | Replace allocation ranges |
-| `POST` | `/experiments/:id/publish` | Compile and publish config snapshot to S3 |
+| `PATCH` | `/experiments/:id` | Update name, description, or targeting rules (auto-publishes if `targetingRules` changes on a `RUNNING` experiment) |
+| `PATCH` | `/experiments/:id/status` | Transition experiment status and auto-publish config |
+| `POST` | `/experiments/:id/variants` | Add a variant (auto-publishes if experiment is `RUNNING`) |
+| `PUT` | `/experiments/:experimentId/allocations` | Replace allocation ranges (auto-publishes if experiment is `RUNNING`) |
+| `POST` | `/experiments/:id/publish` | Manually compile and publish config snapshot to S3 |
 | `GET` | `/health` | Health check |
 
 ### Pagination
@@ -101,6 +101,16 @@ The `GET /experiments` endpoint also accepts optional filter parameters:
 | `status` | string | Filter by status (`DRAFT`, `RUNNING`, `PAUSED`, `ARCHIVED`) |
 
 ## Config Publishing
+
+The service auto-publishes when mutations can affect active assignments:
+
+- Status transitions (`PATCH /experiments/:id/status`)
+- Variant creation on `RUNNING` experiments
+- Allocation updates on `RUNNING` experiments
+- Targeting rule updates on `RUNNING` experiments
+- Experiment deletion
+
+`POST /experiments/:id/publish` remains available as an optional manual re-publish endpoint.
 
 When you call `POST /experiments/:id/publish`:
 

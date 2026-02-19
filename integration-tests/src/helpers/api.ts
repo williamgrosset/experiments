@@ -152,6 +152,28 @@ export function updateExperimentStatus(
   );
 }
 
+export function updateExperiment(
+  experimentId: string,
+  params: {
+    name?: string;
+    description?: string;
+    targetingRules?: Array<{
+      conditions: Array<{
+        attribute: string;
+        operator: "eq" | "neq" | "in" | "notIn" | "contains" | "gt" | "lt";
+        value: unknown;
+      }>;
+    }>;
+  }
+) {
+  return request<Experiment>(
+    EXPERIMENT_SERVICE_URL,
+    "PATCH",
+    `/experiments/${experimentId}`,
+    params
+  );
+}
+
 export function publishConfig(experimentId: string) {
   return request<ConfigSnapshot>(
     EXPERIMENT_SERVICE_URL,
