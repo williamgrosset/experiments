@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import type { Prisma } from "@prisma/client";
 import { createVariantSchema } from "@experiments/shared";
 import { experimentService } from "../services/experiment.service.js";
+import { configPublisher } from "../services/config-publisher.js";
+import { setPublishMetadataHeaders } from "../lib/http/publish-metadata.js";
 
 export async function variantRoutes(app: FastifyInstance) {
   app.post<{
@@ -18,12 +20,31 @@ export async function variantRoutes(app: FastifyInstance) {
 
     const { key, name, payload } = parsed.data;
 
+    const metadata = {
+      attempted: false,
+      succeeded: false,
+      error: undefined as string | undefined,
+    };
+
     try {
       const variant = await experimentService.addVariant(experimentId, {
         key,
         name,
         payload: payload as unknown as Prisma.InputJsonValue,
       });
+
+      const experiment = await experimentService.getById(experimentId);
+      if (experiment?.status === "RUNNING") {
+        metadata.attempted = true;
+        try {
+          await configPublisher.publish(experiment.environmentId);
+          metadata.succeeded = true;
+        } catch (err: unknown) {
+          metadata.error = err instanceof Error ? err.message : "Unknown error";
+        }
+      }
+
+      setPublishMetadataHeaders(reply, metadata);
       return reply.status(201).send(variant);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";

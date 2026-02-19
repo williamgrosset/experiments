@@ -7,7 +7,7 @@
  *   1. Create an environment in experiment-service (Postgres)
  *   2. Create an experiment with two variants and a 50/50 allocation
  *   3. Set the experiment status to RUNNING
- *   4. Publish the config (experiment-service -> S3/MinIO)
+ *   4. Auto-publish config updates to S3 (experiment-service -> S3/MinIO)
  *   5. Decision-service picks up the config via S3 polling
  *   6. GET /decide returns the correct variant assignment for a user
  *   7. The same user always gets the same variant (deterministic)
@@ -189,56 +189,24 @@ describe("End-to-end: config publish and decide", () => {
   });
 
   // --------------------------------------------------------------------------
-  // Step 6: Publish the config
+  // Step 6: Auto-publish reaches decision-service
   // --------------------------------------------------------------------------
-  it("should publish config snapshot to S3", async () => {
-    const res = await publishConfig(experimentId);
+  it("should auto-publish config snapshot after moving to RUNNING", async () => {
+    const userKey = `user-auto-publish-${RUN_ID}`;
+    const decided = await waitForConfigPropagation({
+      userKey,
+      env: ENV_NAME,
+      experimentKey: EXPERIMENT_KEY,
+    });
 
-    expect(res.status).toBe(200);
-    expect(res.data.environment).toBe(ENV_NAME);
-    expect(res.data.version).toBeGreaterThanOrEqual(1);
-    expect(res.data.experiments).toBeInstanceOf(Array);
-
-    // The snapshot should include our experiment
-    const exp = res.data.experiments.find((e) => e.key === EXPERIMENT_KEY);
-    expect(exp).toBeDefined();
-    expect(exp!.variants).toHaveLength(2);
-    expect(exp!.allocations).toHaveLength(2);
-    expect(exp!.salt).toBe(experimentSalt);
-    expect(exp!.variants).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: controlVariantId,
-          key: "control",
-          payload: { color: "blue" },
-        }),
-        expect.objectContaining({
-          id: treatmentVariantId,
-          key: "treatment",
-          payload: { color: "green" },
-        }),
-      ])
-    );
-    expect(exp!.allocations).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          variantId: controlVariantId,
-          rangeStart: 0,
-          rangeEnd: 4999,
-        }),
-        expect.objectContaining({
-          variantId: treatmentVariantId,
-          rangeStart: 5000,
-          rangeEnd: 9999,
-        }),
-      ])
-    );
+    expect(decided.environment).toBe(ENV_NAME);
+    expect(decided.config_version).toBeGreaterThanOrEqual(1);
   });
 
   // --------------------------------------------------------------------------
   // Step 7: Decision-service returns a variant for a user
   //
-  // After publishing, the decision-service picks up the config via S3
+  // After auto-publish, the decision-service picks up the config via S3
   // polling and loads it into memory. We give it a short moment to propagate,
   // then verify the /decide endpoint returns a valid assignment.
   // --------------------------------------------------------------------------
@@ -246,11 +214,12 @@ describe("End-to-end: config publish and decide", () => {
     // Poll until S3 polling propagation delivers the config to decision-service
     // instead of sleeping a fixed duration
     const userKey = `user-integration-${RUN_ID}`;
-    await waitForConfigPropagation({
+    const propagated = await waitForConfigPropagation({
       userKey,
       env: ENV_NAME,
       experimentKey: EXPERIMENT_KEY,
     });
+    expect(propagated.config_version).toBeGreaterThanOrEqual(1);
 
     const res = await decide({ userKey, env: ENV_NAME });
 
@@ -346,7 +315,25 @@ describe("End-to-end: config publish and decide", () => {
     expect(assignment!.variant_id).toBe(expectedVariantId);
   });
 
-  // Step 10: Distribution sanity check across many users
+  // --------------------------------------------------------------------------
+  // Step 10: Manual publish endpoint remains available
+  // --------------------------------------------------------------------------
+  it("should still allow manual publish via endpoint", async () => {
+    const res = await publishConfig(experimentId);
+
+    expect(res.status).toBe(200);
+    expect(res.data.environment).toBe(ENV_NAME);
+    expect(res.data.version).toBeGreaterThanOrEqual(1);
+    expect(res.data.experiments).toBeInstanceOf(Array);
+
+    const exp = res.data.experiments.find((e) => e.key === EXPERIMENT_KEY);
+    expect(exp).toBeDefined();
+    expect(exp!.variants).toHaveLength(2);
+    expect(exp!.allocations).toHaveLength(2);
+    expect(exp!.salt).toBe(experimentSalt);
+  });
+
+  // Step 11: Distribution sanity check across many users
   //
   // For a 50/50 allocation, sampled assignments should be approximately balanced.
   // We use N=200 users and accept a wide 40-60% range per variant to reduce

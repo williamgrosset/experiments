@@ -112,6 +112,22 @@ When you call `POST /experiments/:id/publish`:
    - `configs/{env}/version.json` — lightweight version index for polling
 4. Stores a `ConfigVersion` record in Postgres for audit
 
+### Automatic publish triggers
+
+The service also auto-publishes environment config snapshots after live-impacting mutations:
+
+- Experiment status transitions (`PATCH /experiments/:id/status`)
+- Targeting rule changes on `RUNNING` experiments (`PATCH /experiments/:id` with `targetingRules`)
+- Variant creation on `RUNNING` experiments (`POST /experiments/:experimentId/variants`)
+- Allocation updates on `RUNNING` experiments (`PUT /experiments/:experimentId/allocations`)
+- Experiment deletion (`DELETE /experiments/:id`)
+
+If a mutation succeeds but auto-publish fails, the API still returns success for the mutation and includes publish metadata in response headers:
+
+- `x-publish-attempted`
+- `x-publish-succeeded`
+- `x-publish-error` (present only on publish failure)
+
 ## Running
 
 ### Prerequisites

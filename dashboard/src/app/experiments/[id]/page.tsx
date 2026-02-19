@@ -23,7 +23,6 @@ import { PageContainer } from "@/components/page-layout";
 import { Input, Textarea, FormField } from "@/components/form";
 import { ErrorAlert } from "@/components/error-alert";
 import { StatCard } from "@/components/stat-card";
-import { useToast } from "@/components/toast";
 
 const STATUS_TRANSITIONS: Record<ExperimentStatus, ExperimentStatus[]> = {
   DRAFT: ["RUNNING", "ARCHIVED"],
@@ -72,8 +71,6 @@ export default function ExperimentDetailPage() {
   // Publishing
   const [publishing, setPublishing] = useState(false);
 
-  const { toast } = useToast();
-
   // Delete
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -119,19 +116,6 @@ export default function ExperimentDetailPage() {
     try {
       const updated = await updateExperimentStatus(experiment.id, status);
       setExperiment(updated);
-
-      // Publish config when starting or pausing
-      if (status === "RUNNING" || status === "PAUSED") {
-        try {
-          await publishExperiment(experiment.id);
-          toast("Config published successfully");
-        } catch (pubErr) {
-          toast(
-            pubErr instanceof Error ? pubErr.message : "Failed to publish config",
-            "error",
-          );
-        }
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update status");
     } finally {

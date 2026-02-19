@@ -197,17 +197,15 @@ curl -s -X PATCH http://localhost:3000/api/experiments/EXP_ID/status \
   -d '{"status": "RUNNING"}' | jq
 ```
 
-### Step 6: Publish the config
-
-This compiles all running experiments in the environment into a config snapshot and writes it to S3:
+**(Optional)** You can manually publish a snapshot of the experiment config:
 
 ```bash
 curl -s -X POST http://localhost:3000/api/experiments/EXP_ID/publish | jq
 ```
 
-### Step 7: Request a decision
+### Step 6: Request a decision
 
-The decision service uses the published config to deterministically assign variants:
+Starting the experiment auto-publishes the latest config snapshot for the environment. The decision service uses the published config to deterministically assign variants:
 
 ```bash
 curl -sG "http://localhost:3000/api/decide" \

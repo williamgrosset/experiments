@@ -8,6 +8,7 @@ import {
 } from "@experiments/shared";
 import { experimentService } from "../services/experiment.service.js";
 import { configPublisher } from "../services/config-publisher.js";
+import { setPublishMetadataHeaders } from "../lib/http/publish-metadata.js";
 
 export async function experimentRoutes(app: FastifyInstance) {
   app.post("/experiments", async (request, reply) => {
@@ -74,12 +75,33 @@ export async function experimentRoutes(app: FastifyInstance) {
 
     const { name, description, targetingRules } = parsed.data;
 
+    const metadata = {
+      attempted: false,
+      succeeded: false,
+      error: undefined as string | undefined,
+    };
+
     try {
       const experiment = await experimentService.update(request.params.id, {
         name,
         description,
         targetingRules: targetingRules as unknown as Prisma.InputJsonValue,
       });
+
+      const shouldPublish =
+        targetingRules !== undefined && experiment.status === "RUNNING";
+
+      if (shouldPublish) {
+        metadata.attempted = true;
+        try {
+          await configPublisher.publish(experiment.environmentId);
+          metadata.succeeded = true;
+        } catch (err: unknown) {
+          metadata.error = err instanceof Error ? err.message : "Unknown error";
+        }
+      }
+
+      setPublishMetadataHeaders(reply, metadata);
       return reply.send(experiment);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -101,11 +123,26 @@ export async function experimentRoutes(app: FastifyInstance) {
 
     const { status } = parsed.data;
 
+    const metadata = {
+      attempted: true,
+      succeeded: false,
+      error: undefined as string | undefined,
+    };
+
     try {
       const experiment = await experimentService.updateStatus(
         request.params.id,
         status
       );
+
+      try {
+        await configPublisher.publish(experiment.environmentId);
+        metadata.succeeded = true;
+      } catch (err: unknown) {
+        metadata.error = err instanceof Error ? err.message : "Unknown error";
+      }
+
+      setPublishMetadataHeaders(reply, metadata);
       return reply.send(experiment);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -127,7 +164,20 @@ export async function experimentRoutes(app: FastifyInstance) {
 
       // Re-publish the config snapshot so the decision service
       // stops serving the deleted experiment.
-      await configPublisher.publish(experiment.environmentId);
+      const metadata = {
+        attempted: true,
+        succeeded: false,
+        error: undefined as string | undefined,
+      };
+
+      try {
+        await configPublisher.publish(experiment.environmentId);
+        metadata.succeeded = true;
+      } catch (err: unknown) {
+        metadata.error = err instanceof Error ? err.message : "Unknown error";
+      }
+
+      setPublishMetadataHeaders(reply, metadata);
 
       return reply.send(experiment);
     } catch (err: unknown) {
