@@ -282,7 +282,7 @@ experiments/
 - [ ] User auth
 - [x] Rate limiting on /api/decide
 - [ ] Observability & metrics
-- [ ] Audience builder
+- [x] Audience builder
 - [ ] Event ingestion & conversion attribution
 - [ ] Archive experiment clean-up
 - [ ] React SDK
