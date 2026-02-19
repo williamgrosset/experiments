@@ -51,6 +51,37 @@ Targeting rules are stored on each experiment as an array of rules. Each rule ha
 
 Supported operators: `eq`, `neq`, `in`, `notIn`, `contains`, `gt`, `lt`.
 
+### Audiences
+
+Audiences are reusable targeting rule collections scoped to an environment.
+Experiments can optionally reference an audience via `audienceId` while still
+keeping their own `targetingRules`.
+
+Rules are evaluated with AND semantics at assignment time:
+
+- Audience rules must match (if an audience is attached)
+- Experiment targeting rules must match (if present)
+
+This lets you define broad reusable eligibility once (audience), then refine
+per experiment without duplicating rule definitions.
+
+Audience payload shape:
+
+```json
+{
+  "name": "US Pro Users",
+  "environmentId": "env-id",
+  "rules": [
+    {
+      "conditions": [
+        { "attribute": "country", "operator": "eq", "value": "US" },
+        { "attribute": "plan", "operator": "in", "value": ["pro", "enterprise"] }
+      ]
+    }
+  ]
+}
+```
+
 ## API Routes
 
 | Method | Path | Description |
@@ -58,10 +89,15 @@ Supported operators: `eq`, `neq`, `in`, `notIn`, `contains`, `gt`, `lt`.
 | `POST` | `/environments` | Create an environment |
 | `GET` | `/environments` | List environments (paginated) |
 | `GET` | `/environments/:id` | Get environment by ID |
+| `POST` | `/audiences` | Create an audience |
+| `GET` | `/audiences` | List audiences (paginated, optional `environmentId` filter) |
+| `GET` | `/audiences/:id` | Get audience by ID |
+| `PATCH` | `/audiences/:id` | Update audience name and/or rules |
+| `DELETE` | `/audiences/:id` | Delete audience |
 | `POST` | `/experiments` | Create an experiment |
 | `GET` | `/experiments` | List experiments (paginated, filter by `environmentId`, `status`) |
 | `GET` | `/experiments/:id` | Get experiment with variants and allocations |
-| `PATCH` | `/experiments/:id` | Update name, description, or targeting rules |
+| `PATCH` | `/experiments/:id` | Update name, description, audience, or targeting rules |
 | `PATCH` | `/experiments/:id/status` | Transition experiment status |
 | `POST` | `/experiments/:id/variants` | Add a variant to an experiment |
 | `PUT` | `/experiments/:experimentId/allocations` | Replace allocation ranges |
@@ -118,6 +154,8 @@ The service also auto-publishes environment config snapshots after live-impactin
 
 - Experiment status transitions (`PATCH /experiments/:id/status`)
 - Targeting rule changes on `RUNNING` experiments (`PATCH /experiments/:id` with `targetingRules`)
+- Audience changes with linked `RUNNING` experiments (`PATCH /audiences/:id` with `rules`)
+- Audience deletion with linked `RUNNING` experiments (`DELETE /audiences/:id`)
 - Variant creation on `RUNNING` experiments (`POST /experiments/:experimentId/variants`)
 - Allocation updates on `RUNNING` experiments (`PUT /experiments/:experimentId/allocations`)
 - Experiment deletion (`DELETE /experiments/:id`)

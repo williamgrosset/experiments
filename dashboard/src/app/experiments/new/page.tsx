@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchEnvironments, createExperiment } from "@/lib/api";
+import {
+  fetchEnvironments,
+  fetchAudiences,
+  createExperiment,
+} from "@/lib/api";
 import type {
   Environment,
+  Audience,
   TargetingRule,
   TargetingCondition,
   RuleOperator,
@@ -68,6 +73,7 @@ function serializeConditionValue(value: unknown): string {
 export default function NewExperimentPage() {
   const router = useRouter();
   const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [audiences, setAudiences] = useState<Audience[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -76,6 +82,7 @@ export default function NewExperimentPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [environmentId, setEnvironmentId] = useState("");
+  const [audienceId, setAudienceId] = useState("");
   const [targetingRules, setTargetingRules] = useState<TargetingRule[]>([]);
 
   useEffect(() => {
@@ -87,6 +94,23 @@ export default function NewExperimentPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!environmentId) {
+      setAudiences([]);
+      setAudienceId("");
+      return;
+    }
+
+    fetchAudiences({ environmentId, page: 1, pageSize: 100 })
+      .then((res) => {
+        setAudiences(res.data);
+        setAudienceId((current) =>
+          res.data.some((aud) => aud.id === current) ? current : "",
+        );
+      })
+      .catch(console.error);
+  }, [environmentId]);
 
   // Auto-generate key from name
   function handleNameChange(val: string) {
@@ -188,6 +212,7 @@ export default function NewExperimentPage() {
         name: name.trim(),
         description: description.trim() || undefined,
         environmentId,
+        audienceId: audienceId || undefined,
         targetingRules: buildTargetingRules(),
       });
       router.push(`/experiments/${exp.id}`);
@@ -264,6 +289,25 @@ export default function NewExperimentPage() {
               .
             </p>
           )}
+        </FormField>
+
+        <FormField
+          label="Audience"
+          optional
+          hint="Pick a reusable audience for this experiment, or leave empty for no audience filter."
+        >
+          <Select
+            value={audienceId}
+            onChange={(e) => setAudienceId(e.target.value)}
+            disabled={!environmentId}
+          >
+            <option value="">No audience</option>
+            {audiences.map((audience) => (
+              <option key={audience.id} value={audience.id}>
+                {audience.name}
+              </option>
+            ))}
+          </Select>
         </FormField>
 
         {/* --- Targeting rules --- */}
