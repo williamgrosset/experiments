@@ -10,9 +10,23 @@ datasource db {
 model Environment {
   id          String       @id @default(uuid())
   name        String       @unique
+  audiences   Audience[]
   experiments Experiment[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+}
+
+model Audience {
+  id            String       @id @default(uuid())
+  name          String
+  environmentId String
+  environment   Environment  @relation(fields: [environmentId], references: [id])
+  rules         Json
+  experiments   Experiment[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([name, environmentId])
 }
 
 model Experiment {
@@ -24,12 +38,15 @@ model Experiment {
   status         ExperimentStatus @default(DRAFT)
   environmentId  String
   environment    Environment      @relation(fields: [environmentId], references: [id])
+  audienceId     String?
+  audience       Audience?        @relation(fields: [audienceId], references: [id], onDelete: SetNull)
   variants       Variant[]
   allocations    Allocation[]
   targetingRules Json?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
+  @@index([audienceId])
   @@unique([key, environmentId])
 }
 
