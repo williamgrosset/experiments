@@ -74,14 +74,13 @@ export async function experimentRoutes(app: FastifyInstance) {
 
     const { name, description, targetingRules } = parsed.data;
 
-    let experiment: Awaited<ReturnType<typeof experimentService.update>>;
-
     try {
-      experiment = await experimentService.update(request.params.id, {
+      const experiment = await experimentService.update(request.params.id, {
         name,
         description,
         targetingRules: targetingRules as unknown as Prisma.InputJsonValue,
       });
+      return reply.send(experiment);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
       if (message.includes("Record to update not found")) {
@@ -89,22 +88,6 @@ export async function experimentRoutes(app: FastifyInstance) {
       }
       throw err;
     }
-
-    const shouldPublish =
-      targetingRules !== undefined && experiment.status === "RUNNING";
-
-    if (shouldPublish) {
-      try {
-        await configPublisher.publish(experiment.environmentId);
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        return reply.status(500).send({
-          error: `Experiment updated but failed to publish config: ${message}`,
-        });
-      }
-    }
-
-    return reply.send(experiment);
   });
 
   app.patch<{
@@ -118,10 +101,12 @@ export async function experimentRoutes(app: FastifyInstance) {
 
     const { status } = parsed.data;
 
-    let experiment: Awaited<ReturnType<typeof experimentService.updateStatus>>;
-
     try {
-      experiment = await experimentService.updateStatus(request.params.id, status);
+      const experiment = await experimentService.updateStatus(
+        request.params.id,
+        status
+      );
+      return reply.send(experiment);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
       if (message.includes("not found")) {
@@ -132,18 +117,6 @@ export async function experimentRoutes(app: FastifyInstance) {
       }
       throw err;
     }
-
-    try {
-      // Status transitions can affect live assignments, so publish server-side.
-      await configPublisher.publish(experiment.environmentId);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      return reply.status(500).send({
-        error: `Status updated but failed to publish config: ${message}`,
-      });
-    }
-
-    return reply.send(experiment);
   });
 
   app.delete<{

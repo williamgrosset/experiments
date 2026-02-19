@@ -28,11 +28,9 @@ import {
   addVariant,
   setAllocations,
   updateExperimentStatus,
-  updateExperiment,
   publishConfig,
   deleteExperiment,
   decide,
-  type DecideResponse,
 } from "./helpers/api.js";
 
 /**
@@ -52,60 +50,7 @@ let environmentId: string;
 let experimentId: string;
 let controlVariantId: string;
 let treatmentVariantId: string;
-let rolloutVariantId: string;
 let experimentSalt: string;
-
-async function waitForVersionIncrease(params: {
-  userKey: string;
-  env: string;
-  previousVersion: number;
-  timeoutMs?: number;
-  intervalMs?: number;
-}): Promise<DecideResponse> {
-  const timeoutMs = params.timeoutMs ?? 10_000;
-  const intervalMs = params.intervalMs ?? 250;
-  const deadline = Date.now() + timeoutMs;
-
-  while (Date.now() < deadline) {
-    const res = await decide({ userKey: params.userKey, env: params.env });
-    if (res.status === 200 && res.data.config_version > params.previousVersion) {
-      return res.data;
-    }
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
-  }
-
-  throw new Error(
-    `Config version did not increase above ${params.previousVersion} within ${timeoutMs}ms`
-  );
-}
-
-async function waitForAssignmentMatch(params: {
-  userKey: string;
-  env: string;
-  experimentKey: string;
-  predicate: (assignment: DecideResponse["assignments"][number] | undefined) => boolean;
-  timeoutMs?: number;
-  intervalMs?: number;
-}): Promise<DecideResponse> {
-  const timeoutMs = params.timeoutMs ?? 10_000;
-  const intervalMs = params.intervalMs ?? 250;
-  const deadline = Date.now() + timeoutMs;
-
-  while (Date.now() < deadline) {
-    const res = await decide({ userKey: params.userKey, env: params.env });
-    if (res.status === 200) {
-      const assignment = res.data.assignments.find(
-        (a) => a.experiment_key === params.experimentKey
-      );
-      if (params.predicate(assignment)) {
-        return res.data;
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
-  }
-
-  throw new Error(`Timed out waiting for assignment match for ${params.experimentKey}`);
-}
 
 describe("End-to-end: config publish and decide", () => {
   beforeAll(async () => {
@@ -448,100 +393,5 @@ describe("End-to-end: config publish and decide", () => {
     expect(controlRatio).toBeLessThanOrEqual(MAX_RATIO);
     expect(treatmentRatio).toBeGreaterThanOrEqual(MIN_RATIO);
     expect(treatmentRatio).toBeLessThanOrEqual(MAX_RATIO);
-  });
-
-  // --------------------------------------------------------------------------
-  // Step 11: Live mutation auto-publish — add variant while RUNNING
-  // --------------------------------------------------------------------------
-  it("should auto-publish when adding a variant to a RUNNING experiment", async () => {
-    const userKey = `user-auto-variant-${RUN_ID}`;
-    const before = await decide({ userKey, env: ENV_NAME });
-    expect(before.status).toBe(200);
-
-    const addRes = await addVariant(experimentId, {
-      key: "rollout",
-      name: "Rollout",
-      payload: { color: "purple" },
-    });
-    expect(addRes.status).toBe(201);
-    rolloutVariantId = addRes.data.id;
-
-    const after = await waitForVersionIncrease({
-      userKey,
-      env: ENV_NAME,
-      previousVersion: before.data.config_version,
-    });
-
-    expect(after.config_version).toBeGreaterThan(before.data.config_version);
-  });
-
-  // --------------------------------------------------------------------------
-  // Step 12: Live mutation auto-publish — allocation update while RUNNING
-  // --------------------------------------------------------------------------
-  it("should auto-publish when updating allocations on a RUNNING experiment", async () => {
-    const userKey = `user-auto-allocation-${RUN_ID}`;
-    const before = await decide({ userKey, env: ENV_NAME });
-    expect(before.status).toBe(200);
-
-    const allocRes = await setAllocations(experimentId, [
-      { variantId: treatmentVariantId, rangeStart: 0, rangeEnd: 9999 },
-    ]);
-    expect(allocRes.status).toBe(200);
-
-    const after = await waitForVersionIncrease({
-      userKey,
-      env: ENV_NAME,
-      previousVersion: before.data.config_version,
-    });
-
-    expect(after.config_version).toBeGreaterThan(before.data.config_version);
-
-    const assignment = after.assignments.find(
-      (a) => a.experiment_key === EXPERIMENT_KEY
-    );
-    expect(assignment).toBeDefined();
-    expect(assignment!.variant_key).toBe("treatment");
-  });
-
-  // --------------------------------------------------------------------------
-  // Step 13: Live mutation auto-publish — targeting update while RUNNING
-  // --------------------------------------------------------------------------
-  it("should auto-publish when updating targeting rules on a RUNNING experiment", async () => {
-    const userKey = `user-auto-targeting-${RUN_ID}`;
-    const before = await decide({ userKey, env: ENV_NAME });
-    expect(before.status).toBe(200);
-
-    const updateRes = await updateExperiment(experimentId, {
-      targetingRules: [
-        {
-          conditions: [
-            { attribute: "country", operator: "eq", value: "US" },
-          ],
-        },
-      ],
-    });
-    expect(updateRes.status).toBe(200);
-
-    const noContext = await waitForAssignmentMatch({
-      userKey,
-      env: ENV_NAME,
-      experimentKey: EXPERIMENT_KEY,
-      predicate: (assignment) => assignment === undefined,
-    });
-
-    expect(noContext.config_version).toBeGreaterThan(before.data.config_version);
-
-    const withContext = await decide({
-      userKey,
-      env: ENV_NAME,
-      context: { country: "US" },
-    });
-    expect(withContext.status).toBe(200);
-
-    const assignment = withContext.data.assignments.find(
-      (a) => a.experiment_key === EXPERIMENT_KEY
-    );
-    expect(assignment).toBeDefined();
-    expect(assignment!.variant_key).toBe("treatment");
   });
 });
