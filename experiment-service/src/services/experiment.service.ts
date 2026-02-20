@@ -1,4 +1,4 @@
-import type { ExperimentStatus, Prisma } from "@prisma/client";
+import { type ExperimentStatus, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 
 const VALID_TRANSITIONS: Record<ExperimentStatus, ExperimentStatus[]> = {
@@ -183,6 +183,30 @@ export class ExperimentService {
   ) {
     return prisma.variant.create({
       data: { ...data, experimentId },
+    });
+  }
+
+  async updateVariant(
+    variantId: string,
+    data: {
+      name?: string;
+      payload?: Prisma.InputJsonValue | null;
+    }
+  ) {
+    return prisma.variant.update({
+      where: { id: variantId },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.payload !== undefined && {
+          payload: data.payload === null ? Prisma.JsonNull : data.payload,
+        }),
+      },
+    });
+  }
+
+  async deleteVariant(variantId: string) {
+    return prisma.variant.delete({
+      where: { id: variantId },
     });
   }
 

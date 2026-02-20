@@ -100,6 +100,13 @@ export const createVariantSchema = z.object({
 
 export type CreateVariantRequest = z.infer<typeof createVariantSchema>;
 
+export const updateVariantSchema = z.object({
+  name: z.string().min(1).optional(),
+  payload: z.record(z.string(), z.unknown()).nullable().optional(),
+});
+
+export type UpdateVariantRequest = z.infer<typeof updateVariantSchema>;
+
 export const setAllocationsSchema = z.object({
   allocations: z.array(
     z.object({
