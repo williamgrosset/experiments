@@ -178,7 +178,7 @@ export default function NewExperimentPage() {
                 // field === "value"
                 return {
                   ...cond,
-                  value: parseConditionValue(cond.operator, value),
+                  value,
                 };
               }),
             }
@@ -193,9 +193,19 @@ export default function NewExperimentPage() {
 
     const cleaned = targetingRules
       .map((rule) => ({
-        conditions: rule.conditions.filter(
-          (c) => c.attribute.trim() !== "" && serializeConditionValue(c.value).trim() !== "",
-        ),
+        conditions: rule.conditions
+          .filter(
+            (c) =>
+              c.attribute.trim() !== "" &&
+              serializeConditionValue(c.value).trim() !== "",
+          )
+          .map((c) => ({
+            ...c,
+            value: parseConditionValue(
+              c.operator,
+              serializeConditionValue(c.value),
+            ),
+          })),
       }))
       .filter((rule) => rule.conditions.length > 0);
 
