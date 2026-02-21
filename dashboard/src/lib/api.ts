@@ -138,6 +138,26 @@ export function createVariant(
   });
 }
 
+export function updateVariant(
+  experimentId: string,
+  variantId: string,
+  data: { name?: string; payload?: Record<string, unknown> | null },
+): Promise<Variant> {
+  return request<Variant>(`/experiments/${experimentId}/variants/${variantId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteVariant(
+  experimentId: string,
+  variantId: string,
+): Promise<Variant> {
+  return request<Variant>(`/experiments/${experimentId}/variants/${variantId}`, {
+    method: "DELETE",
+  });
+}
+
 // --- Allocations ---
 
 export function setAllocations(
