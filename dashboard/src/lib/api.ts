@@ -7,6 +7,7 @@ import type {
   Allocation,
   TargetingRule,
   PaginatedResponse,
+  UpdateVariantsRequest,
 } from "@experiments/shared";
 
 const BASE = "/api";
@@ -155,6 +156,16 @@ export function deleteVariant(
 ): Promise<Variant> {
   return request<Variant>(`/experiments/${experimentId}/variants/${variantId}`, {
     method: "DELETE",
+  });
+}
+
+export function updateVariants(
+  experimentId: string,
+  data: UpdateVariantsRequest,
+): Promise<Variant[]> {
+  return request<Variant[]>(`/experiments/${experimentId}/variants`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
   });
 }
 
