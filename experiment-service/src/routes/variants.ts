@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import type { Prisma } from "@prisma/client";
-import { createVariantSchema, updateVariantSchema } from "@experiments/shared";
+import {
+  createVariantSchema,
+  updateVariantSchema,
+  updateVariantsSchema,
+} from "@experiments/shared";
 import { experimentService } from "../services/experiment.service.js";
 import { configPublisher } from "../services/config-publisher.js";
 import { setPublishMetadataHeaders } from "../lib/http/publish-metadata.js";
@@ -55,6 +59,68 @@ export async function variantRoutes(app: FastifyInstance) {
       }
       if (message.includes("Foreign key constraint")) {
         return reply.status(404).send({ error: "Experiment not found" });
+      }
+      throw err;
+    }
+  });
+
+  app.patch<{
+    Params: { experimentId: string };
+  }>("/experiments/:experimentId/variants", async (request, reply) => {
+    const { experimentId } = request.params;
+    const parsed = updateVariantsSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.issues[0].message });
+    }
+
+    const metadata = {
+      attempted: false,
+      succeeded: false,
+      error: undefined as string | undefined,
+    };
+
+    try {
+      const variants = await experimentService.updateVariants(experimentId, {
+        create: parsed.data.create.map((item) => ({
+          key: item.key,
+          name: item.name,
+          ...(item.payload !== undefined && {
+            payload: item.payload as unknown as Prisma.InputJsonValue,
+          }),
+        })),
+        update: parsed.data.update.map((item) => ({
+          id: item.id,
+          ...(item.name !== undefined && { name: item.name }),
+          ...(item.payload !== undefined && {
+            payload: item.payload as Prisma.InputJsonValue | null,
+          }),
+        })),
+        delete: parsed.data.delete,
+      });
+
+      const experiment = await experimentService.getById(experimentId);
+      if (experiment?.status === "RUNNING") {
+        metadata.attempted = true;
+        try {
+          await configPublisher.publish(experiment.environmentId);
+          metadata.succeeded = true;
+        } catch (err: unknown) {
+          metadata.error = err instanceof Error ? err.message : "Unknown error";
+        }
+      }
+
+      setPublishMetadataHeaders(reply, metadata);
+      return reply.send(variants);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      if (message.includes("One or more variants not found")) {
+        return reply.status(404).send({ error: message });
+      }
+      if (message.includes("Unique constraint")) {
+        return reply
+          .status(409)
+          .send({ error: "One or more variant keys already exist for this experiment" });
       }
       throw err;
     }

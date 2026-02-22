@@ -204,6 +204,78 @@ export class ExperimentService {
     });
   }
 
+  async updateVariants(
+    experimentId: string,
+    operations: {
+      create: Array<{
+        key: string;
+        name: string;
+        payload?: Prisma.InputJsonValue;
+      }>;
+      update: Array<{
+        id: string;
+        name?: string;
+        payload?: Prisma.InputJsonValue | null;
+      }>;
+      delete: Array<{ id: string }>;
+    }
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const touchedIds = Array.from(new Set([
+        ...operations.update.map((item) => item.id),
+        ...operations.delete.map((item) => item.id),
+      ]));
+
+      if (touchedIds.length > 0) {
+        const existing = await tx.variant.findMany({
+          where: {
+            experimentId,
+            id: { in: touchedIds },
+          },
+          select: { id: true },
+        });
+
+        if (existing.length !== touchedIds.length) {
+          throw new Error("One or more variants not found");
+        }
+      }
+
+      if (operations.delete.length > 0) {
+        await tx.variant.deleteMany({
+          where: {
+            experimentId,
+            id: { in: operations.delete.map((item) => item.id) },
+          },
+        });
+      }
+
+      for (const item of operations.update) {
+        await tx.variant.update({
+          where: { id: item.id },
+          data: {
+            ...(item.name !== undefined && { name: item.name }),
+            ...(item.payload !== undefined && {
+              payload: item.payload === null ? Prisma.JsonNull : item.payload,
+            }),
+          },
+        });
+      }
+
+      for (const item of operations.create) {
+        await tx.variant.create({
+          data: {
+            experimentId,
+            key: item.key,
+            name: item.name,
+            ...(item.payload !== undefined && { payload: item.payload }),
+          },
+        });
+      }
+
+      return tx.variant.findMany({ where: { experimentId } });
+    });
+  }
+
   async deleteVariant(variantId: string) {
     return prisma.variant.delete({
       where: { id: variantId },

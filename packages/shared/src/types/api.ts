@@ -107,6 +107,36 @@ export const updateVariantSchema = z.object({
 
 export type UpdateVariantRequest = z.infer<typeof updateVariantSchema>;
 
+export const updateVariantsSchema = z.object({
+  create: z
+    .array(
+      z.object({
+        key: z.string().min(1),
+        name: z.string().min(1),
+        payload: z.record(z.string(), z.unknown()).optional(),
+      }),
+    )
+    .default([]),
+  update: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        name: z.string().min(1).optional(),
+        payload: z.record(z.string(), z.unknown()).nullable().optional(),
+      }),
+    )
+    .default([]),
+  delete: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+      }),
+    )
+    .default([]),
+});
+
+export type UpdateVariantsRequest = z.infer<typeof updateVariantsSchema>;
+
 export const setAllocationsSchema = z.object({
   allocations: z.array(
     z.object({
