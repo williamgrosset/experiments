@@ -190,6 +190,9 @@ pnpm --filter experiment-service run db:push
 
 # Or run a migration
 pnpm --filter experiment-service run db:migrate
+
+# Reset local data (wipes Postgres + MinIO bucket)
+pnpm --filter experiment-service run db:reset
 ```
 
 ### Development
