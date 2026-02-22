@@ -38,6 +38,7 @@ See each service's README for more detail.
 |---|---|
 | `/api/environments/*` | `experiment-service:3001/environments/*` |
 | `/api/experiments/*` | `experiment-service:3001/experiments/*` |
+| `/api/audiences/*` | `experiment-service:3001/audiences/*` |
 | `/api/decide*` | `decision-service:3002/decide*` |
 | `/health` | Aggregated health from both services |
 
