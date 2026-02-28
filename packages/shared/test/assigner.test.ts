@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { getBucket } from "@experiments/shared";
-import type { ConfigExperiment, TargetingRule } from "@experiments/shared";
-import { assignVariants } from "../src/services/assigner.js";
+import { getBucket } from "../src/hashing.js";
+import type { ConfigExperiment, TargetingRule } from "../src/types/experiment.js";
+import { assignVariants } from "../src/assigner.js";
 
 function createExperiment(
   overrides: Partial<ConfigExperiment> = {}

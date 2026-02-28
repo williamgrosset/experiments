@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import type { TargetingRule } from "@experiments/shared";
-import { evaluateTargetingRules } from "../src/services/evaluator.js";
+import type { TargetingRule } from "../src/types/experiment.js";
+import { evaluateTargetingRules } from "../src/evaluator.js";
 
 function rules(conditions: TargetingRule["conditions"]): TargetingRule[] {
   return [{ conditions }];

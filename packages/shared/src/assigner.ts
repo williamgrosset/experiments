@@ -1,5 +1,6 @@
-import { getBucket } from "@experiments/shared";
-import type { ConfigExperiment, Assignment } from "@experiments/shared";
+import { getBucket } from "./hashing.js";
+import type { ConfigExperiment } from "./types/experiment.js";
+import type { Assignment } from "./types/api.js";
 import { evaluateTargetingRules } from "./evaluator.js";
 
 /**
