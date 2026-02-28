@@ -74,16 +74,28 @@ export class ConfigFetcher {
   /**
    * Perform a single poll cycle: check version, fetch snapshot if changed.
    * Returns the snapshot if it was updated, null otherwise.
+   *
+   * Uses a strict greater-than check (matching the server-side ConfigStore)
+   * so that stale CDN edges or version rollbacks don't trigger spurious
+   * re-fetches. The snapshot is only applied if its version is actually
+   * newer than what we already have, guarding against race conditions
+   * where a slower fetch for an older version could arrive after a newer one.
    */
   async poll(): Promise<ConfigSnapshot | null> {
     const version = await this.fetchVersion();
 
-    if (version === this.currentVersion) {
+    if (this.currentVersion !== null && version <= this.currentVersion) {
       return null;
     }
 
     const snapshot = await this.fetchSnapshot();
-    this.currentVersion = version;
+
+    // Stale-write guard: only apply if the fetched snapshot is actually newer
+    if (this.currentVersion !== null && snapshot.version <= this.currentVersion) {
+      return null;
+    }
+
+    this.currentVersion = snapshot.version;
     return snapshot;
   }
 

@@ -181,6 +181,44 @@ describe("ConfigFetcher", () => {
       expect(result).not.toBeNull();
       expect(result!.version).toBe(2);
     });
+
+    it("ignores version rollbacks (version < current)", async () => {
+      globalThis.fetch = mockFetch([
+        { ok: true, body: createVersionResponse(1) },
+      ]);
+
+      const fetcher = new ConfigFetcher(
+        "https://cdn.example.com",
+        "test",
+        60000,
+        vi.fn()
+      );
+      fetcher.setCurrentVersion(2);
+
+      const result = await fetcher.poll();
+      expect(result).toBeNull();
+      // Should only have called fetchVersion, not fetchSnapshot
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("applies stale-write guard when snapshot version is older than current", async () => {
+      // Simulate a race: version.json says 3, but the snapshot fetched is still version 1
+      globalThis.fetch = mockFetch([
+        { ok: true, body: createVersionResponse(3) },
+        { ok: true, body: createTestSnapshot({ version: 1 }) },
+      ]);
+
+      const fetcher = new ConfigFetcher(
+        "https://cdn.example.com",
+        "test",
+        60000,
+        vi.fn()
+      );
+      fetcher.setCurrentVersion(2);
+
+      const result = await fetcher.poll();
+      expect(result).toBeNull();
+    });
   });
 
   describe("start / destroy", () => {
