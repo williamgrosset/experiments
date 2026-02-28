@@ -1,4 +1,4 @@
-import type { TargetingRule, TargetingCondition } from "@experiments/shared";
+import type { TargetingRule, TargetingCondition } from "./types/experiment.js";
 
 /**
  * Resolve a dot-notation path against a nested object.

@@ -1,8 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { DecideResponse } from "@experiments/shared";
-import { decideRequestSchema } from "@experiments/shared";
+import { decideRequestSchema, assignVariants } from "@experiments/shared";
 import type { ConfigStore } from "../services/config-store.js";
-import { assignVariants } from "../services/assigner.js";
 
 export async function decideRoutes(
   app: FastifyInstance,
