@@ -286,5 +286,5 @@ experiments/
 - [x] Audience builder
 - [ ] Event ingestion & conversion attribution
 - [ ] Archive experiment clean-up
-- [ ] React SDK
+- [x] React SDK
 - [ ] LLM-assisted workflow
