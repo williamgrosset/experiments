@@ -287,4 +287,5 @@ experiments/
 - [ ] Event ingestion & conversion attribution
 - [ ] Archive experiment clean-up
 - [x] React SDK
+- [ ] Server-only private experiment config
 - [ ] LLM-assisted workflow
